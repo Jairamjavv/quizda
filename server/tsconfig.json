@@ -8,8 +8,7 @@
     "strict": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": ".",
-    "types": ["node", "jest"]
+    "rootDir": "."
   },
   "include": ["./**/*.ts"],
   "exclude": ["node_modules", "dist", "__tests__", "**/*.test.ts", "**/*.spec.ts"]
