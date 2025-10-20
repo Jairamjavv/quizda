@@ -7,7 +7,6 @@
     "dev": "node --loader ts-node/esm index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "prestart": "npx ts-node init_db.ts && npx ts-node init_mongo_quiz.ts",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -20,7 +19,9 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.20.0",
-    "pg": "^8.11.3"
+    "pg": "^8.11.3",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -31,6 +32,8 @@
     "@types/node": "^24.8.1",
     "@types/pg": "^8.15.5",
     "@types/supertest": "^6.0.3",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.6",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
