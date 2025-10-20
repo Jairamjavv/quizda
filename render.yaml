@@ -31,7 +31,6 @@ services:
   - type: web
     name: quizda-frontend
     runtime: static
-    region: oregon
     plan: free
     branch: main
     buildCommand: cd client && npm install && npm run build
