@@ -129,11 +129,11 @@ router.get("/", async (req, res) => {
 
     // Calculate average score
     const totalScore = completedAttempts.reduce(
-      (sum, attempt) => sum + (attempt.score || 0),
+      (sum, attempt) => sum + (parseFloat(attempt.score as any) || 0),
       0
     );
     const totalMaxPoints = completedAttempts.reduce(
-      (sum, attempt) => sum + (attempt.max_points || 0),
+      (sum, attempt) => sum + (parseFloat(attempt.max_points as any) || 0),
       0
     );
     const averageScore =
@@ -306,11 +306,11 @@ router.get("/groups", async (req, res) => {
       );
 
       const totalScore = groupAttempts.reduce(
-        (sum, a) => sum + (a.score || 0),
+        (sum, a) => sum + (parseFloat(a.score as any) || 0),
         0
       );
       const totalMaxPoints = groupAttempts.reduce(
-        (sum, a) => sum + (a.max_points || 0),
+        (sum, a) => sum + (parseFloat(a.max_points as any) || 0),
         0
       );
       const averageScore =
