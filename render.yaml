@@ -6,34 +6,37 @@ services:
   - type: web
     name: quizda-backend
     runtime: node
-    region: oregon # Free tier available
+    region: oregon
     plan: free
-    branch: main # Deploy only from main branch
-    buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm start
-    healthCheckPath: /
+    branch: main
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
       - key: JWT_SECRET
-        sync: false # Set manually in Render dashboard (sensitive)
+        sync: false
       - key: NEON_DATABASE_URL
-        sync: false # Set manually in Render dashboard (sensitive)
+        sync: false
       - key: MONGODB_ATLAS_URL
-        sync: false # Set manually in Render dashboard (sensitive)
+        sync: false
+      - key: MONGODB_DBNAME
+        value: quizda
       - key: CLIENT_URL
-        value: https://quizda.onrender.com # Update after frontend is deployed
-    autoDeployTrigger: off # Only deploy via GitHub Actions
+        value: https://quizda.onrender.com
 
   # Frontend Static Site
   - type: web
     name: quizda-frontend
     runtime: static
     branch: main
-    buildCommand: cd client && npm install && npm run build
-    staticPublishPath: ./client/dist
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     envVars:
       - key: VITE_API_URL
         value: https://quizda-backend.onrender.com
@@ -41,4 +44,3 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-    autoDeployTrigger: off # Only deploy via GitHub Actions
