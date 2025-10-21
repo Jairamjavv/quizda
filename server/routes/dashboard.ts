@@ -9,24 +9,38 @@ const router = express.Router();
 
 router.use(authenticateToken);
 
-// Helper function to safely parse numeric strings from PostgreSQL
-function parseNumericField(value: unknown): number {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? 0 : parsed;
-  }
-  return 0;
-}
+// Type conversion utilities for PostgreSQL NUMERIC fields
+const TypeConverters = {
+  /**
+   * Safely converts PostgreSQL NUMERIC values (which come as strings) to numbers
+   * @param value - The value to convert (can be number, string, or unknown)
+   * @returns Parsed number or 0 if conversion fails
+   */
+  toNumber(value: unknown): number {
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  },
+
+  /**
+   * Converts user ID from request (can be string or number) to number
+   * @param id - The user ID to convert
+   * @returns Parsed integer or the original number
+   */
+  toUserId(id: string | number): number {
+    return typeof id === "string" ? Number.parseInt(id, 10) : id;
+  },
+};
 
 // Helper function to extract and validate user ID from request
 function getUserId(req: express.Request): number | null {
   if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
     return null;
   }
-  return typeof req.user.id === "string"
-    ? parseInt(req.user.id, 10)
-    : req.user.id;
+  return TypeConverters.toUserId(req.user.id as string | number);
 }
 
 /**
@@ -149,11 +163,11 @@ router.get("/", async (req, res) => {
 
     // Calculate average score
     const totalScore = completedAttempts.reduce(
-      (sum, attempt) => sum + parseNumericField(attempt.score),
+      (sum, attempt) => sum + TypeConverters.toNumber(attempt.score),
       0
     );
     const totalMaxPoints = completedAttempts.reduce(
-      (sum, attempt) => sum + parseNumericField(attempt.max_points),
+      (sum, attempt) => sum + TypeConverters.toNumber(attempt.max_points),
       0
     );
     const averageScore =
@@ -321,11 +335,11 @@ router.get("/groups", async (req, res) => {
       );
 
       const totalScore = groupAttempts.reduce(
-        (sum, a) => sum + parseNumericField(a.score),
+        (sum, a) => sum + TypeConverters.toNumber(a.score),
         0
       );
       const totalMaxPoints = groupAttempts.reduce(
-        (sum, a) => sum + parseNumericField(a.max_points),
+        (sum, a) => sum + TypeConverters.toNumber(a.max_points),
         0
       );
       const averageScore =
