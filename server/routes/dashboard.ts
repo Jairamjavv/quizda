@@ -1,10 +1,47 @@
 import express from "express";
 import Attempt from "../models/attempt.js";
 import authenticateToken from "../middleware/auth.js";
+import { logger } from "../logger.js";
+import Group from "../models/group.js";
+import Quiz from "../models/quiz.js";
 
 const router = express.Router();
 
 router.use(authenticateToken);
+
+// Type conversion utilities for PostgreSQL NUMERIC fields
+const TypeConverters = {
+  /**
+   * Safely converts PostgreSQL NUMERIC values (which come as strings) to numbers
+   * @param value - The value to convert (can be number, string, or unknown)
+   * @returns Parsed number or 0 if conversion fails
+   */
+  toNumber(value: unknown): number {
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const parsed = Number(value);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  },
+
+  /**
+   * Converts user ID from request (can be string or number) to number
+   * @param id - The user ID to convert
+   * @returns Parsed integer or the original number
+   */
+  toUserId(id: string | number): number {
+    return typeof id === "string" ? Number.parseInt(id, 10) : id;
+  },
+};
+
+// Helper function to extract and validate user ID from request
+function getUserId(req: express.Request): number | null {
+  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    return null;
+  }
+  return TypeConverters.toUserId(req.user.id as string | number);
+}
 
 /**
  * @openapi
@@ -65,12 +102,11 @@ router.use(authenticateToken);
  *         description: Unauthorized
  */
 router.get("/", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  const userId = getUserId(req);
+  if (userId === null) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
   const groupId = req.query.groupId as string | undefined;
 
   try {
@@ -80,7 +116,6 @@ router.get("/", async (req, res) => {
 
     // Filter by group if specified
     if (groupId && groupId !== "all") {
-      const Quiz = (await import("../models/quiz.js")).default;
       const groupQuizzes = await Quiz.getAll();
       const groupQuizIds = groupQuizzes
         .filter((q: any) => q.group_id && q.group_id.toString() === groupId)
@@ -128,11 +163,11 @@ router.get("/", async (req, res) => {
 
     // Calculate average score
     const totalScore = completedAttempts.reduce(
-      (sum, attempt) => sum + (attempt.score || 0),
+      (sum, attempt) => sum + TypeConverters.toNumber(attempt.score),
       0
     );
     const totalMaxPoints = completedAttempts.reduce(
-      (sum, attempt) => sum + (attempt.max_points || 0),
+      (sum, attempt) => sum + TypeConverters.toNumber(attempt.max_points),
       0
     );
     const averageScore =
@@ -264,21 +299,27 @@ router.get("/attempts", async (req, res) => {
  *         description: Available groups
  */
 router.get("/groups", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  const userId = getUserId(req);
+  if (userId === null) {
+    logger.warn("Unauthorized access attempt to /dashboard/groups");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+  logger.info("Fetching groups for user", { userId });
 
   try {
-    const Group = (await import("../models/group.js")).default;
-    const Quiz = (await import("../models/quiz.js")).default;
+    logger.debug("Loading groups and quizzes from MongoDB");
     const attempts = await Attempt.getByUser(userId);
     const completedAttempts = attempts.filter((a) => a.completed_at);
 
     const groups = await Group.getAll();
     const quizzes = await Quiz.getAll();
+
+    logger.info("Data loaded successfully", {
+      groupsCount: groups.length,
+      quizzesCount: quizzes.length,
+      attemptsCount: completedAttempts.length,
+    });
 
     // Calculate stats for each group
     const groupStats = groups.map((group: any) => {
@@ -294,11 +335,11 @@ router.get("/groups", async (req, res) => {
       );
 
       const totalScore = groupAttempts.reduce(
-        (sum, a) => sum + (a.score || 0),
+        (sum, a) => sum + TypeConverters.toNumber(a.score),
         0
       );
       const totalMaxPoints = groupAttempts.reduce(
-        (sum, a) => sum + (a.max_points || 0),
+        (sum, a) => sum + TypeConverters.toNumber(a.max_points),
         0
       );
       const averageScore =
@@ -312,10 +353,17 @@ router.get("/groups", async (req, res) => {
       };
     });
 
+    logger.info("Groups stats calculated successfully", {
+      statsCount: groupStats.length,
+    });
     res.json(groupStats);
-  } catch (error) {
-    console.error("Groups error:", error);
-    res.status(500).json({ error: "Failed to load groups" });
+  } catch (error: any) {
+    logger.error("Failed to load groups", error, { userId });
+    res.status(500).json({
+      error: "Failed to load groups",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
   }
 });
 

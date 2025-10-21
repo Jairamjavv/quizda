@@ -27,7 +27,7 @@ services:
       - key: MONGODB_DBNAME
         value: quizda
       - key: CLIENT_URL
-        value: https://quizda.onrender.com
+        value: https://quizda-frontend.onrender.com
 
   # Frontend Static Site
   - type: web
