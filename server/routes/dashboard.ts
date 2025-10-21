@@ -2,10 +2,32 @@ import express from "express";
 import Attempt from "../models/attempt.js";
 import authenticateToken from "../middleware/auth.js";
 import { logger } from "../logger.js";
+import Group from "../models/group.js";
+import Quiz from "../models/quiz.js";
 
 const router = express.Router();
 
 router.use(authenticateToken);
+
+// Helper function to safely parse numeric strings from PostgreSQL
+function parseNumericField(value: unknown): number {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+// Helper function to extract and validate user ID from request
+function getUserId(req: express.Request): number | null {
+  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    return null;
+  }
+  return typeof req.user.id === "string"
+    ? parseInt(req.user.id, 10)
+    : req.user.id;
+}
 
 /**
  * @openapi
@@ -66,12 +88,11 @@ router.use(authenticateToken);
  *         description: Unauthorized
  */
 router.get("/", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  const userId = getUserId(req);
+  if (userId === null) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
   const groupId = req.query.groupId as string | undefined;
 
   try {
@@ -81,7 +102,6 @@ router.get("/", async (req, res) => {
 
     // Filter by group if specified
     if (groupId && groupId !== "all") {
-      const Quiz = (await import("../models/quiz.js")).default;
       const groupQuizzes = await Quiz.getAll();
       const groupQuizIds = groupQuizzes
         .filter((q: any) => q.group_id && q.group_id.toString() === groupId)
@@ -129,11 +149,11 @@ router.get("/", async (req, res) => {
 
     // Calculate average score
     const totalScore = completedAttempts.reduce(
-      (sum, attempt) => sum + (parseFloat(attempt.score as any) || 0),
+      (sum, attempt) => sum + parseNumericField(attempt.score),
       0
     );
     const totalMaxPoints = completedAttempts.reduce(
-      (sum, attempt) => sum + (parseFloat(attempt.max_points as any) || 0),
+      (sum, attempt) => sum + parseNumericField(attempt.max_points),
       0
     );
     const averageScore =
@@ -265,20 +285,15 @@ router.get("/attempts", async (req, res) => {
  *         description: Available groups
  */
 router.get("/groups", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  const userId = getUserId(req);
+  if (userId === null) {
     logger.warn("Unauthorized access attempt to /dashboard/groups");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
-
   logger.info("Fetching groups for user", { userId });
 
   try {
-    const Group = (await import("../models/group.js")).default;
-    const Quiz = (await import("../models/quiz.js")).default;
-
     logger.debug("Loading groups and quizzes from MongoDB");
     const attempts = await Attempt.getByUser(userId);
     const completedAttempts = attempts.filter((a) => a.completed_at);
@@ -306,11 +321,11 @@ router.get("/groups", async (req, res) => {
       );
 
       const totalScore = groupAttempts.reduce(
-        (sum, a) => sum + (parseFloat(a.score as any) || 0),
+        (sum, a) => sum + parseNumericField(a.score),
         0
       );
       const totalMaxPoints = groupAttempts.reduce(
-        (sum, a) => sum + (parseFloat(a.max_points as any) || 0),
+        (sum, a) => sum + parseNumericField(a.max_points),
         0
       );
       const averageScore =
