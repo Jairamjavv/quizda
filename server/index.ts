@@ -5,6 +5,7 @@ import bodyParser from "body-parser";
 const { json } = bodyParser;
 import cors from "cors";
 import dotenv from "dotenv";
+import { logger } from "./logger.js";
 
 dotenv.config();
 
@@ -15,6 +16,11 @@ import dashboardRoutes from "./routes/dashboard.js";
 
 const app = express();
 
+logger.info("Starting Quizda API server...", {
+  nodeEnv: process.env.NODE_ENV || "development",
+  port: process.env.PORT || 4000,
+});
+
 // CORS configuration for production
 const corsOptions = {
   origin: process.env.CLIENT_URL || "http://localhost:5173",
@@ -22,8 +28,13 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
+logger.info("CORS configured", { allowedOrigin: corsOptions.origin });
+
 app.use(cors(corsOptions));
 app.use(json());
+
+// Add request logging middleware
+app.use((req, res, next) => logger.requestLogger(req, res, next));
 
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
@@ -38,9 +49,18 @@ app.get("/", (req, res) =>
   })
 );
 
-app.get("/health", (req, res) => res.json({ status: "healthy" }));
+app.get("/health", (req, res) => {
+  logger.debug("Health check requested");
+  res.json({ status: "healthy" });
+});
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  logger.info(`✅ Server successfully started`, {
+    port: PORT,
+    environment: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));

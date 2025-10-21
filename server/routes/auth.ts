@@ -39,6 +39,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import dotenv from "dotenv";
+import { logger } from "../logger.js";
 dotenv.config();
 
 const router = express.Router();
@@ -81,38 +82,88 @@ router.post("/register", async (req, res) => {
    *         description: JWT secret not configured
    */
   const { email, password, role } = req.body;
-  const existing = await User.findByEmail(email);
-  if (existing) return res.status(400).json({ error: "Email exists" });
-  const hash = await bcrypt.hash(password, 10);
-  const user = await User.create(email, hash, role || "user");
-  if (!process.env.JWT_SECRET) {
-    return res.status(500).json({ error: "JWT secret not configured" });
+
+  logger.info("Registration attempt", { email, role: role || "user" });
+
+  try {
+    const existing = await User.findByEmail(email);
+    if (existing) {
+      logger.warn("Registration failed: email already exists", { email });
+      return res.status(400).json({ error: "Email exists" });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = await User.create(email, hash, role || "user");
+
+    logger.info("User created successfully", {
+      userId: user.id,
+      email,
+      role: user.role,
+    });
+
+    if (!process.env.JWT_SECRET) {
+      logger.error("JWT_SECRET not configured");
+      return res.status(500).json({ error: "JWT secret not configured" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET
+    );
+
+    logger.info("User registered and token generated", {
+      userId: user.id,
+      email,
+    });
+    res.json({ token, email: user.email, role: user.role });
+  } catch (error) {
+    logger.error("Registration error", error, { email });
+    res.status(500).json({ error: "Registration failed" });
   }
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET
-  );
-  res.json({ token, email: user.email, role: user.role });
 });
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-  const user = await User.findByEmail(email);
-  if (!user) return res.status(400).json({ error: "Invalid credentials" });
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) return res.status(400).json({ error: "Invalid credentials" });
 
-  // Update last login
-  await User.updateLastLogin(user.id);
+  logger.info("Login attempt", { email });
 
-  if (!process.env.JWT_SECRET) {
-    return res.status(500).json({ error: "JWT secret not configured" });
+  try {
+    const user = await User.findByEmail(email);
+    if (!user) {
+      logger.warn("Login failed: user not found", { email });
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      logger.warn("Login failed: invalid password", { email, userId: user.id });
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+
+    // Update last login
+    await User.updateLastLogin(user.id);
+    logger.debug("Last login updated", { userId: user.id });
+
+    if (!process.env.JWT_SECRET) {
+      logger.error("JWT_SECRET not configured");
+      return res.status(500).json({ error: "JWT secret not configured" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET
+    );
+
+    logger.info("User logged in successfully", {
+      userId: user.id,
+      email,
+      role: user.role,
+    });
+    res.json({ token, email: user.email, role: user.role });
+  } catch (error) {
+    logger.error("Login error", error, { email });
+    res.status(500).json({ error: "Login failed" });
   }
-  const token = jwt.sign(
-    { id: user.id, role: user.role },
-    process.env.JWT_SECRET
-  );
-  res.json({ token, email: user.email, role: user.role });
 });
 
 export default router;
