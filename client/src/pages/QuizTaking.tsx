@@ -25,7 +25,10 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Checkbox
+  Checkbox,
+  Select,
+  MenuItem,
+  InputLabel
 } from '@mui/material'
 import {
   ArrowBack,
@@ -46,6 +49,7 @@ interface Quiz {
   description: string
   total_points: number
   tags: string[]
+  group_id?: string
 }
 
 interface Question {
@@ -81,6 +85,12 @@ interface QuizAttempt {
   tagsSnapshot: string[]
 }
 
+interface Group {
+  _id: string
+  name: string
+  description: string
+}
+
 const QuizTaking: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -98,15 +108,37 @@ const QuizTaking: React.FC = () => {
   const [error, setError] = useState('')
   const [showModeSelection, setShowModeSelection] = useState(true)
   const [showResults, setShowResults] = useState(false)
+  const [availableGroups, setAvailableGroups] = useState<Group[]>([])
+  const [availableQuizzes, setAvailableQuizzes] = useState<Quiz[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all')
+  const [selectedQuizId, setSelectedQuizId] = useState<string>('')
   const [attemptResult, setAttemptResult] = useState<any>(null)
 
   useEffect(() => {
+    // Fetch groups and quizzes on component mount
+    fetchGroupsAndQuizzes()
+  }, [])
+
+  useEffect(() => {
     if (quizId) {
-      fetchQuizData()
-    } else {
-      fetchAvailableQuizzes()
+      setSelectedQuizId(quizId)
+      fetchQuizData(quizId)
     }
   }, [quizId])
+
+  useEffect(() => {
+    // Filter quizzes by selected group
+    if (selectedGroupId && selectedGroupId !== 'all') {
+      const filtered = availableQuizzes.filter((q: any) => 
+        q.group_id === selectedGroupId
+      )
+      // If current quiz is not in filtered list, clear selection
+      if (selectedQuizId && !filtered.find((q: any) => q._id === selectedQuizId)) {
+        setSelectedQuizId('')
+        setQuiz(null)
+      }
+    }
+  }, [selectedGroupId])
 
   useEffect(() => {
     let interval: NodeJS.Timeout
@@ -124,19 +156,40 @@ const QuizTaking: React.FC = () => {
     return () => clearInterval(interval)
   }, [mode, timeLeft])
 
-  const fetchQuizData = async () => {
+  const fetchGroupsAndQuizzes = async () => {
+    try {
+      const [groupsResponse, quizzesResponse] = await Promise.all([
+        axios.get('/admin/groups'),
+        axios.get('/quizzes')
+      ])
+      setAvailableGroups(groupsResponse.data)
+      setAvailableQuizzes(quizzesResponse.data)
+      setLoading(false)
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to load groups and quizzes')
+      setLoading(false)
+    }
+  }
+
+  const fetchQuizData = async (id: string) => {
     try {
       const [quizResponse, questionsResponse] = await Promise.all([
-        axios.get(`/quizzes/${quizId}`),
-        axios.get(`/quizzes/${quizId}/questions`)
+        axios.get(`/quizzes/${id}`),
+        axios.get(`/quizzes/${id}/questions`)
       ])
       setQuiz(quizResponse.data)
       setQuestions(questionsResponse.data.sort((a: Question, b: Question) => a.order - b.order))
+      setLoading(false)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load quiz')
-    } finally {
       setLoading(false)
     }
+  }
+
+  const handleQuizSelection = async (id: string) => {
+    setSelectedQuizId(id)
+    setLoading(true)
+    await fetchQuizData(id)
   }
 
   const fetchAvailableQuizzes = async () => {
@@ -314,70 +367,140 @@ const QuizTaking: React.FC = () => {
 
   if (showModeSelection) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom align="center">
-            Choose Quiz Mode
-          </Typography>
-          {quiz && (
-            <Box mb={3}>
-              <Typography variant="h6" gutterBottom>
-                {quiz.title}
+      <>
+        <AppBar position="static">
+          <Toolbar>
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={() => navigate('/dashboard')}
+              sx={{ mr: 2 }}
+            >
+              <ArrowBack />
+            </IconButton>
+            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+              Quiz Mode Selection
+            </Typography>
+          </Toolbar>
+        </AppBar>
+        
+        <Container maxWidth="md" sx={{ mt: 4 }}>
+          <Paper sx={{ p: 4 }}>
+            {/* Group and Quiz Selection */}
+            <Box mb={4}>
+              <Typography variant="h5" gutterBottom align="center" sx={{ mb: 3 }}>
+                Select Quiz
               </Typography>
-              <Typography variant="body1" color="textSecondary" gutterBottom>
-                {quiz.description}
-              </Typography>
-              <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                {quiz.tags.map(tag => (
-                  <Chip key={tag} label={tag} size="small" />
-                ))}
-              </Box>
-            </Box>
-          )}
-          
-          <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
-            <Card sx={{ minWidth: 200 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Zen Mode
-                </Typography>
-                <Typography variant="body2" color="textSecondary" gutterBottom>
-                  Take your time, no pressure
-                </Typography>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={() => handleModeSelection('zen')}
+              
+              {/* Group Selection */}
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="group-select-label">Group</InputLabel>
+                <Select
+                  labelId="group-select-label"
+                  id="group-select"
+                  value={selectedGroupId}
+                  label="Group"
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
                 >
-                  Start Zen Quiz
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card sx={{ minWidth: 200 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Timed Mode
-                </Typography>
-                <Typography variant="body2" color="textSecondary" gutterBottom>
-                  Challenge yourself with time limits
-                </Typography>
-                <Box display="flex" flexDirection="column" gap={1} mt={2}>
-                  {[10, 20, 30].map(minutes => (
-                    <Button
-                      key={minutes}
-                      variant="outlined"
-                      onClick={() => handleModeSelection('timed', minutes)}
-                    >
-                      {minutes} minutes
-                    </Button>
+                  <MenuItem value="all">All Groups</MenuItem>
+                  {availableGroups.map(group => (
+                    <MenuItem key={group._id} value={group._id}>
+                      {group.name}
+                    </MenuItem>
                   ))}
+                </Select>
+              </FormControl>
+
+              {/* Quiz Selection */}
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="quiz-select-label">Quiz</InputLabel>
+                <Select
+                  labelId="quiz-select-label"
+                  id="quiz-select"
+                  value={selectedQuizId}
+                  label="Quiz"
+                  onChange={(e) => handleQuizSelection(e.target.value)}
+                  disabled={availableQuizzes.filter(q => 
+                    selectedGroupId === 'all' || q.group_id === selectedGroupId
+                  ).length === 0}
+                >
+                  {availableQuizzes
+                    .filter(q => selectedGroupId === 'all' || q.group_id === selectedGroupId)
+                    .map(quiz => (
+                      <MenuItem key={quiz._id} value={quiz._id}>
+                        {quiz.title}
+                      </MenuItem>
+                    ))}
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Quiz Details and Mode Selection - Only show if a quiz is selected */}
+            {quiz && selectedQuizId && (
+              <>
+                <Typography variant="h4" gutterBottom align="center">
+                  Choose Quiz Mode
+                </Typography>
+                <Box mb={3}>
+                  <Typography variant="h6" gutterBottom>
+                    {quiz.title}
+                  </Typography>
+                  <Typography variant="body1" color="textSecondary" gutterBottom>
+                    {quiz.description}
+                  </Typography>
+                  <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
+                    {quiz.tags.map(tag => (
+                      <Chip key={tag} label={tag} size="small" />
+                    ))}
+                  </Box>
                 </Box>
-              </CardContent>
-            </Card>
-          </Box>
-        </Paper>
-      </Container>
+            
+                <Box display="flex" gap={2} justifyContent="center" flexWrap="wrap">
+                  <Card sx={{ minWidth: 200 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Zen Mode
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Take your time, no pressure
+                      </Typography>
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={() => handleModeSelection('zen')}
+                      >
+                        Start Zen Quiz
+                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  <Card sx={{ minWidth: 200 }}>
+                    <CardContent>
+                      <Typography variant="h6" gutterBottom>
+                        Timed Mode
+                      </Typography>
+                      <Typography variant="body2" color="textSecondary" gutterBottom>
+                        Challenge yourself with time limits
+                      </Typography>
+                      <Box display="flex" flexDirection="column" gap={1} mt={2}>
+                        {[10, 20, 30].map(minutes => (
+                          <Button
+                            key={minutes}
+                            variant="outlined"
+                            onClick={() => handleModeSelection('timed', minutes)}
+                          >
+                            {minutes} minutes
+                          </Button>
+                        ))}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Box>
+              </>
+            )}
+          </Paper>
+        </Container>
+      </>
     )
   }
 
