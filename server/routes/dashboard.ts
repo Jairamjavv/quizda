@@ -1,6 +1,7 @@
 import express from "express";
 import Attempt from "../models/attempt.js";
 import authenticateToken from "../middleware/auth.js";
+import { logger } from "../logger.js";
 
 const router = express.Router();
 
@@ -265,20 +266,31 @@ router.get("/attempts", async (req, res) => {
  */
 router.get("/groups", async (req, res) => {
   if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    logger.warn("Unauthorized access attempt to /dashboard/groups");
     return res.status(401).json({ error: "Unauthorized" });
   }
 
   const userId =
     typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
 
+  logger.info("Fetching groups for user", { userId });
+
   try {
     const Group = (await import("../models/group.js")).default;
     const Quiz = (await import("../models/quiz.js")).default;
+
+    logger.debug("Loading groups and quizzes from MongoDB");
     const attempts = await Attempt.getByUser(userId);
     const completedAttempts = attempts.filter((a) => a.completed_at);
 
     const groups = await Group.getAll();
     const quizzes = await Quiz.getAll();
+
+    logger.info("Data loaded successfully", {
+      groupsCount: groups.length,
+      quizzesCount: quizzes.length,
+      attemptsCount: completedAttempts.length,
+    });
 
     // Calculate stats for each group
     const groupStats = groups.map((group: any) => {
@@ -312,10 +324,17 @@ router.get("/groups", async (req, res) => {
       };
     });
 
+    logger.info("Groups stats calculated successfully", {
+      statsCount: groupStats.length,
+    });
     res.json(groupStats);
-  } catch (error) {
-    console.error("Groups error:", error);
-    res.status(500).json({ error: "Failed to load groups" });
+  } catch (error: any) {
+    logger.error("Failed to load groups", error, { userId });
+    res.status(500).json({
+      error: "Failed to load groups",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
   }
 });
 
