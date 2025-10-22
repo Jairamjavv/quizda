@@ -2,6 +2,7 @@ import express from "express";
 import Quiz from "../models/quiz.js";
 import Question from "../models/question.js";
 import Group from "../models/group.js";
+import FlaggedQuestion from "../models/flaggedQuestion.js";
 import authenticateToken from "../middleware/auth.js";
 import requireRole from "../middleware/role.js";
 
@@ -533,5 +534,175 @@ router.delete("/groups/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to delete group" });
   }
 });
+
+// Flagged Questions Management
+/**
+ * @openapi
+ * /admin/flagged-questions:
+ *   get:
+ *     summary: Get all flagged questions
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of flagged questions
+ */
+router.get("/flagged-questions", async (req, res) => {
+  try {
+    const flaggedQuestions = await FlaggedQuestion.getAll();
+    res.json(flaggedQuestions);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch flagged questions" });
+  }
+});
+
+/**
+ * @openapi
+ * /admin/flagged-questions/stats:
+ *   get:
+ *     summary: Get statistics about flagged questions
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Flagged questions statistics
+ */
+router.get("/flagged-questions/stats", async (req, res) => {
+  try {
+    const stats = await FlaggedQuestion.getStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+/**
+ * @openapi
+ * /admin/flagged-questions/grouped:
+ *   get:
+ *     summary: Get flagged questions grouped by question ID
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Flagged questions grouped by question
+ */
+router.get("/flagged-questions/grouped", async (req, res) => {
+  try {
+    const grouped = await FlaggedQuestion.getGroupedByQuestion();
+    res.json(grouped);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch grouped data" });
+  }
+});
+
+/**
+ * @openapi
+ * /admin/flagged-questions/{id}/resolve:
+ *   put:
+ *     summary: Resolve a flagged question
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resolution_notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Flagged question resolved
+ */
+router.put("/flagged-questions/:id/resolve", async (req, res) => {
+  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const resolved_by =
+    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+  const { resolution_notes } = req.body;
+
+  try {
+    const result = await FlaggedQuestion.resolve({
+      id: parseInt(req.params.id, 10),
+      resolved_by,
+      resolution_notes,
+    });
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to resolve flagged question" });
+  }
+});
+
+/**
+ * @openapi
+ * /admin/flagged-questions/question/{questionId}/resolve:
+ *   put:
+ *     summary: Resolve all flags for a specific question
+ *     tags:
+ *       - Admin
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: questionId
+ *         schema:
+ *           type: string
+ *         required: true
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resolution_notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: All flags for question resolved
+ */
+router.put(
+  "/flagged-questions/question/:questionId/resolve",
+  async (req, res) => {
+    if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const resolved_by =
+      typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+    const { resolution_notes } = req.body;
+
+    try {
+      const result = await FlaggedQuestion.resolveAllForQuestion({
+        question_id: req.params.questionId,
+        resolved_by,
+        resolution_notes,
+      });
+      res.json({
+        message: "All flags resolved for question",
+        count: result.length,
+        resolved: result,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resolve flags" });
+    }
+  }
+);
 
 export default router;
