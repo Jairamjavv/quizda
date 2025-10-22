@@ -366,6 +366,14 @@ const QuizTaking: React.FC = () => {
     const { score, maxPoints, perQuestionResults, tagsSnapshot } = calculateScore()
 
     try {
+      // Prepare flagged questions data
+      const flaggedData = Object.keys(flaggedQuestions).length > 0
+        ? Object.entries(flaggedQuestions).map(([questionId, reason]) => ({
+            question_id: questionId,
+            reason
+          }))
+        : undefined
+
       const attemptData = {
         mode,
         timed_duration_minutes: mode === 'timed' ? Math.ceil((startedAt.getTime() - completedAt.getTime()) / (1000 * 60)) : undefined,
@@ -374,28 +382,11 @@ const QuizTaking: React.FC = () => {
         score,
         max_points: maxPoints,
         per_question_results: perQuestionResults,
-        tags_snapshot: tagsSnapshot
+        tags_snapshot: tagsSnapshot,
+        flagged_questions: flaggedData
       }
 
       const response = await axios.post(`/quizzes/${quiz._id}/attempt`, attemptData)
-      
-      // Submit flagged questions if any
-      if (Object.keys(flaggedQuestions).length > 0) {
-        const flaggedData = Object.entries(flaggedQuestions).map(([questionId, reason]) => ({
-          question_id: questionId,
-          reason
-        }))
-        
-        try {
-          await axios.post(`/quizzes/${quiz._id}/flagged-questions`, {
-            attempt_id: response.data.id,
-            flagged_questions: flaggedData
-          })
-        } catch (flagErr) {
-          console.error('Failed to submit flagged questions:', flagErr)
-          // Continue even if flagging fails
-        }
-      }
       
       setAttemptResult(response.data)
       setShowResults(true)

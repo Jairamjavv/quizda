@@ -549,14 +549,19 @@ router.delete("/groups/:id", async (req, res) => {
  *       200:
  *         description: List of flagged questions
  */
-router.get("/flagged-questions", async (req, res) => {
-  try {
-    const flaggedQuestions = await FlaggedQuestion.getAll();
-    res.json(flaggedQuestions);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch flagged questions" });
+router.get(
+  "/flagged-questions",
+  authenticateToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const flaggedQuestions = await FlaggedQuestion.getAll();
+      res.json(flaggedQuestions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch flagged questions" });
+    }
   }
-});
+);
 
 /**
  * @openapi
@@ -571,14 +576,19 @@ router.get("/flagged-questions", async (req, res) => {
  *       200:
  *         description: Flagged questions statistics
  */
-router.get("/flagged-questions/stats", async (req, res) => {
-  try {
-    const stats = await FlaggedQuestion.getStats();
-    res.json(stats);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch stats" });
+router.get(
+  "/flagged-questions/stats",
+  authenticateToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const stats = await FlaggedQuestion.getStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stats" });
+    }
   }
-});
+);
 
 /**
  * @openapi
@@ -593,14 +603,19 @@ router.get("/flagged-questions/stats", async (req, res) => {
  *       200:
  *         description: Flagged questions grouped by question
  */
-router.get("/flagged-questions/grouped", async (req, res) => {
-  try {
-    const grouped = await FlaggedQuestion.getGroupedByQuestion();
-    res.json(grouped);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch grouped data" });
+router.get(
+  "/flagged-questions/grouped",
+  authenticateToken,
+  requireRole("admin"),
+  async (req, res) => {
+    try {
+      const grouped = await FlaggedQuestion.getGroupedByQuestion();
+      res.json(grouped);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch grouped data" });
+    }
   }
-});
+);
 
 /**
  * @openapi
@@ -629,26 +644,31 @@ router.get("/flagged-questions/grouped", async (req, res) => {
  *       200:
  *         description: Flagged question resolved
  */
-router.put("/flagged-questions/:id/resolve", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
+router.put(
+  "/flagged-questions/:id/resolve",
+  authenticateToken,
+  requireRole("admin"),
+  async (req, res) => {
+    if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
 
-  const resolved_by =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
-  const { resolution_notes } = req.body;
+    const resolved_by =
+      typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+    const { resolution_notes } = req.body;
 
-  try {
-    const result = await FlaggedQuestion.resolve({
-      id: parseInt(req.params.id, 10),
-      resolved_by,
-      resolution_notes,
-    });
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to resolve flagged question" });
+    try {
+      const result = await FlaggedQuestion.resolve({
+        id: parseInt(req.params.id, 10),
+        resolved_by,
+        resolution_notes,
+      });
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resolve flagged question" });
+    }
   }
-});
+);
 
 /**
  * @openapi
@@ -679,6 +699,8 @@ router.put("/flagged-questions/:id/resolve", async (req, res) => {
  */
 router.put(
   "/flagged-questions/question/:questionId/resolve",
+  authenticateToken,
+  requireRole("admin"),
   async (req, res) => {
     if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
       return res.status(401).json({ error: "Unauthorized" });

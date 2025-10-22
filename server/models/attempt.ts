@@ -7,6 +7,11 @@ interface PerQuestionResult {
   points_awarded: number;
 }
 
+interface FlaggedQuestion {
+  question_id: string;
+  reason: string;
+}
+
 const Attempt = {
   async create({
     user_id,
@@ -19,6 +24,7 @@ const Attempt = {
     max_points,
     per_question_results,
     tags_snapshot,
+    flagged_questions,
   }: {
     user_id: number;
     quiz_id: string;
@@ -30,27 +36,73 @@ const Attempt = {
     max_points: number;
     per_question_results: PerQuestionResult[];
     tags_snapshot: string[];
+    flagged_questions?: FlaggedQuestion[];
   }) {
-    const { rows } = await pool.query(
-      `INSERT INTO attempts (
-        user_id, quiz_id, mode, timed_duration_minutes, 
-        started_at, completed_at, score, max_points, 
-        per_question_results, tags_snapshot
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [
-        user_id,
-        quiz_id,
-        mode,
-        timed_duration_minutes,
-        started_at,
-        completed_at,
-        score,
-        max_points,
-        JSON.stringify(per_question_results),
-        JSON.stringify(tags_snapshot),
-      ]
-    );
-    return rows[0];
+    const client = await pool.connect();
+
+    try {
+      await client.query("BEGIN");
+
+      // Create the attempt
+      const { rows } = await client.query(
+        `INSERT INTO attempts (
+          user_id, quiz_id, mode, timed_duration_minutes, 
+          started_at, completed_at, score, max_points, 
+          per_question_results, tags_snapshot
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          user_id,
+          quiz_id,
+          mode,
+          timed_duration_minutes,
+          started_at,
+          completed_at,
+          score,
+          max_points,
+          JSON.stringify(per_question_results),
+          JSON.stringify(tags_snapshot),
+        ]
+      );
+
+      const attempt = rows[0];
+
+      // Insert flagged questions if any
+      if (flagged_questions && flagged_questions.length > 0) {
+        const values: any[] = [];
+        const placeholders: string[] = [];
+
+        flagged_questions.forEach((fq, index) => {
+          const offset = index * 5;
+          placeholders.push(
+            `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${
+              offset + 4
+            }, $${offset + 5})`
+          );
+          values.push(
+            user_id,
+            attempt.id,
+            quiz_id,
+            fq.question_id,
+            fq.reason || "No reason provided"
+          );
+        });
+
+        await client.query(
+          `INSERT INTO flagged_questions 
+           (user_id, attempt_id, quiz_id, question_id, reason) 
+           VALUES ${placeholders.join(", ")}`,
+          values
+        );
+      }
+
+      await client.query("COMMIT");
+      return attempt;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
   },
 
   async getByUser(user_id: number) {

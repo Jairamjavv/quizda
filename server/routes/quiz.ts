@@ -164,6 +164,15 @@ router.get("/:id/questions", async (req, res) => {
  *                 type: integer
  *               results:
  *                 type: object
+ *               flagged_questions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     question_id:
+ *                       type: string
+ *                     reason:
+ *                       type: string
  *     responses:
  *       200:
  *         description: Attempt created
@@ -190,101 +199,28 @@ router.post("/:id/attempt", async (req, res) => {
     max_points,
     per_question_results,
     tags_snapshot,
+    flagged_questions,
   } = req.body;
-  const attempt = await Attempt.create({
-    user_id,
-    quiz_id,
-    mode,
-    timed_duration_minutes,
-    started_at: new Date(started_at),
-    completed_at: new Date(completed_at),
-    score,
-    max_points,
-    per_question_results,
-    tags_snapshot,
-  });
-  res.json(attempt);
-});
-
-/**
- * @openapi
- * /quizzes/{id}/flagged-questions:
- *   post:
- *     summary: Submit flagged questions for a quiz attempt
- *     tags:
- *       - Quiz
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: Quiz ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - attempt_id
- *               - flagged_questions
- *             properties:
- *               attempt_id:
- *                 type: integer
- *                 description: The attempt ID this flagging is associated with
- *               flagged_questions:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     question_id:
- *                       type: string
- *                     reason:
- *                       type: string
- *     responses:
- *       200:
- *         description: Flagged questions saved successfully
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
- */
-router.post("/:id/flagged-questions", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  const user_id =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
-  const quiz_id = req.params.id;
-  const { attempt_id, flagged_questions } = req.body;
-
-  if (!attempt_id || !flagged_questions || !Array.isArray(flagged_questions)) {
-    return res.status(400).json({ error: "Invalid request data" });
-  }
 
   try {
-    const flaggedData = flagged_questions.map((fq: any) => ({
+    const attempt = await Attempt.create({
       user_id,
-      attempt_id,
       quiz_id,
-      question_id: fq.question_id,
-      reason: fq.reason || "No reason provided",
-    }));
-
-    const result = await FlaggedQuestion.bulkCreate(flaggedData);
-    res.json({
-      message: "Flagged questions saved successfully",
-      count: result.length,
-      flagged: result,
+      mode,
+      timed_duration_minutes,
+      started_at: new Date(started_at),
+      completed_at: new Date(completed_at),
+      score,
+      max_points,
+      per_question_results,
+      tags_snapshot,
+      flagged_questions,
     });
+    res.json(attempt);
   } catch (error: any) {
-    console.error("Error saving flagged questions:", error);
+    console.error("Error creating attempt:", error);
     res.status(500).json({
-      error: "Failed to save flagged questions",
+      error: "Failed to create attempt",
       details:
         process.env.NODE_ENV !== "production" ? error.message : undefined,
     });
