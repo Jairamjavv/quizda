@@ -219,10 +219,12 @@ router.post("/:id/attempt", async (req, res) => {
     res.json(attempt);
   } catch (error: any) {
     console.error("Error creating attempt:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Request body:", JSON.stringify(req.body, null, 2));
     res.status(500).json({
       error: "Failed to create attempt",
-      details:
-        process.env.NODE_ENV !== "production" ? error.message : undefined,
+      details: error.message,
+      code: error.code,
     });
   }
 });
