@@ -67,32 +67,42 @@ const Attempt = {
       const attempt = rows[0];
 
       // Insert flagged questions if any
+      // Note: This will fail silently if the flagged_questions table doesn't exist
       if (flagged_questions && flagged_questions.length > 0) {
-        const values: any[] = [];
-        const placeholders: string[] = [];
+        try {
+          const values: any[] = [];
+          const placeholders: string[] = [];
 
-        flagged_questions.forEach((fq, index) => {
-          const offset = index * 5;
-          placeholders.push(
-            `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${
-              offset + 4
-            }, $${offset + 5})`
-          );
-          values.push(
-            user_id,
-            attempt.id,
-            quiz_id,
-            fq.question_id,
-            fq.reason || "No reason provided"
-          );
-        });
+          flagged_questions.forEach((fq, index) => {
+            const offset = index * 5;
+            placeholders.push(
+              `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${
+                offset + 4
+              }, $${offset + 5})`
+            );
+            values.push(
+              user_id,
+              attempt.id,
+              quiz_id,
+              fq.question_id,
+              fq.reason || "No reason provided"
+            );
+          });
 
-        await client.query(
-          `INSERT INTO flagged_questions 
-           (user_id, attempt_id, quiz_id, question_id, reason) 
-           VALUES ${placeholders.join(", ")}`,
-          values
-        );
+          await client.query(
+            `INSERT INTO flagged_questions 
+             (user_id, attempt_id, quiz_id, question_id, reason) 
+             VALUES ${placeholders.join(", ")}`,
+            values
+          );
+        } catch (flagError: any) {
+          // Log but don't fail the attempt if flagged_questions table doesn't exist
+          console.warn(
+            "Failed to insert flagged questions (table may not exist):",
+            flagError.message
+          );
+          // Continue with the attempt creation
+        }
       }
 
       await client.query("COMMIT");
