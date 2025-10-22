@@ -2,6 +2,7 @@ import express from "express";
 import Quiz from "../models/quiz.js";
 import Question from "../models/question.js";
 import Attempt from "../models/attempt.js";
+import Group from "../models/group.js";
 import authenticateToken from "../middleware/auth.js";
 
 const router = express.Router();
@@ -158,6 +159,41 @@ router.post("/:id/attempt", async (req, res) => {
     tags_snapshot,
   });
   res.json(attempt);
+});
+
+/**
+ * @openapi
+ * /groups:
+ *   get:
+ *     summary: Get all groups (for quiz selection)
+ *     tags:
+ *       - Quiz
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all groups
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ */
+router.get("/groups", async (req, res) => {
+  try {
+    const groups = await Group.getAll();
+    res.json(groups);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch groups" });
+  }
 });
 
 export default router;
