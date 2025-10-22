@@ -159,7 +159,7 @@ const QuizTaking: React.FC = () => {
   const fetchGroupsAndQuizzes = async () => {
     try {
       const [groupsResponse, quizzesResponse] = await Promise.all([
-        axios.get('/groups'),
+        axios.get('/quizzes/groups'),
         axios.get('/quizzes')
       ])
       setAvailableGroups(groupsResponse.data)
