@@ -163,9 +163,10 @@ router.post("/:id/attempt", async (req, res) => {
 
 /**
  * @openapi
- * /groups:
+ * /quizzes/groups:
  *   get:
  *     summary: Get all groups (for quiz selection)
+ *     description: Returns all available groups. Users can view all groups and take quizzes from any group.
  *     tags:
  *       - Quiz
  *     security:
@@ -186,13 +187,21 @@ router.post("/:id/attempt", async (req, res) => {
  *                     type: string
  *                   description:
  *                     type: string
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       500:
+ *         description: Server error
  */
 router.get("/groups", async (req, res) => {
   try {
     const groups = await Group.getAll();
     res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch groups" });
+  } catch (error: any) {
+    res.status(500).json({
+      error: "Failed to fetch groups",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
   }
 });
 
