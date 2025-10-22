@@ -3,6 +3,7 @@ import Quiz from "../models/quiz.js";
 import Question from "../models/question.js";
 import Attempt from "../models/attempt.js";
 import Group from "../models/group.js";
+import FlaggedQuestion from "../models/flaggedQuestion.js";
 import authenticateToken from "../middleware/auth.js";
 
 const router = express.Router();
@@ -163,6 +164,15 @@ router.get("/:id/questions", async (req, res) => {
  *                 type: integer
  *               results:
  *                 type: object
+ *               flagged_questions:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     question_id:
+ *                       type: string
+ *                     reason:
+ *                       type: string
  *     responses:
  *       200:
  *         description: Attempt created
@@ -189,20 +199,32 @@ router.post("/:id/attempt", async (req, res) => {
     max_points,
     per_question_results,
     tags_snapshot,
+    flagged_questions,
   } = req.body;
-  const attempt = await Attempt.create({
-    user_id,
-    quiz_id,
-    mode,
-    timed_duration_minutes,
-    started_at: new Date(started_at),
-    completed_at: new Date(completed_at),
-    score,
-    max_points,
-    per_question_results,
-    tags_snapshot,
-  });
-  res.json(attempt);
+
+  try {
+    const attempt = await Attempt.create({
+      user_id,
+      quiz_id,
+      mode,
+      timed_duration_minutes,
+      started_at: new Date(started_at),
+      completed_at: new Date(completed_at),
+      score,
+      max_points,
+      per_question_results,
+      tags_snapshot,
+      flagged_questions,
+    });
+    res.json(attempt);
+  } catch (error: any) {
+    console.error("Error creating attempt:", error);
+    res.status(500).json({
+      error: "Failed to create attempt",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
+  }
 });
 
 export default router;

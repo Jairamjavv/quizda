@@ -28,6 +28,19 @@ const tables = [
     per_question_results JSONB NOT NULL,
     tags_snapshot JSONB NOT NULL
   );`,
+  `CREATE TABLE IF NOT EXISTS flagged_questions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    attempt_id INTEGER REFERENCES attempts(id),
+    quiz_id VARCHAR(255) NOT NULL,
+    question_id VARCHAR(255) NOT NULL,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMP,
+    resolved_by INTEGER REFERENCES users(id),
+    resolution_notes TEXT
+  );`,
 ];
 
 async function main() {

@@ -35,7 +35,9 @@ import {
   ArrowForward,
   Timer,
   CheckCircle,
-  Cancel
+  Cancel,
+  Flag,
+  FlagOutlined
 } from '@mui/icons-material'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
@@ -101,6 +103,10 @@ const QuizTaking: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
+  const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, string>>({}) // questionId -> reason
+  const [showFlagDialog, setShowFlagDialog] = useState(false)
+  const [flagReason, setFlagReason] = useState('')
+  const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false)
   const [mode, setMode] = useState<'timed' | 'zen' | null>(null)
   const [timeLeft, setTimeLeft] = useState(0)
   const [startedAt, setStartedAt] = useState<Date | null>(null)
@@ -254,6 +260,48 @@ const QuizTaking: React.FC = () => {
     }
   }
 
+  const handleFlagQuestion = () => {
+    const currentQuestionId = questions[currentQuestionIndex]._id
+    if (flaggedQuestions[currentQuestionId]) {
+      // Unflag if already flagged
+      const updated = { ...flaggedQuestions }
+      delete updated[currentQuestionId]
+      setFlaggedQuestions(updated)
+    } else {
+      // Show dialog to add flag with reason
+      setFlagReason('')
+      setShowFlagDialog(true)
+    }
+  }
+
+  const handleSaveFlag = () => {
+    const currentQuestionId = questions[currentQuestionIndex]._id
+    setFlaggedQuestions(prev => ({
+      ...prev,
+      [currentQuestionId]: flagReason || 'No reason provided'
+    }))
+    setShowFlagDialog(false)
+    setFlagReason('')
+  }
+
+  const handleSubmitClick = () => {
+    // Check for unanswered questions
+    const unansweredQuestions = questions.filter(q => !answers[q._id] || 
+      (Array.isArray(answers[q._id]) && answers[q._id].length === 0))
+    
+    // Show confirmation dialog if there are unanswered or flagged questions
+    if (unansweredQuestions.length > 0 || Object.keys(flaggedQuestions).length > 0) {
+      setShowSubmitConfirmation(true)
+    } else {
+      handleSubmitQuiz()
+    }
+  }
+
+  const handleConfirmedSubmit = async () => {
+    setShowSubmitConfirmation(false)
+    await handleSubmitQuiz()
+  }
+
   const calculateScore = () => {
     let totalScore = 0
     let maxPoints = 0
@@ -318,6 +366,14 @@ const QuizTaking: React.FC = () => {
     const { score, maxPoints, perQuestionResults, tagsSnapshot } = calculateScore()
 
     try {
+      // Prepare flagged questions data
+      const flaggedData = Object.keys(flaggedQuestions).length > 0
+        ? Object.entries(flaggedQuestions).map(([questionId, reason]) => ({
+            question_id: questionId,
+            reason
+          }))
+        : undefined
+
       const attemptData = {
         mode,
         timed_duration_minutes: mode === 'timed' ? Math.ceil((startedAt.getTime() - completedAt.getTime()) / (1000 * 60)) : undefined,
@@ -326,10 +382,12 @@ const QuizTaking: React.FC = () => {
         score,
         max_points: maxPoints,
         per_question_results: perQuestionResults,
-        tags_snapshot: tagsSnapshot
+        tags_snapshot: tagsSnapshot,
+        flagged_questions: flaggedData
       }
 
       const response = await axios.post(`/quizzes/${quiz._id}/attempt`, attemptData)
+      
       setAttemptResult(response.data)
       setShowResults(true)
     } catch (err: any) {
@@ -571,12 +629,23 @@ const QuizTaking: React.FC = () => {
         </Box>
 
         <Paper sx={{ p: 4 }}>
-          <Typography variant="h6" gutterBottom>
-            {currentQuestion.text}
-          </Typography>
-          <Typography variant="body2" color="textSecondary" gutterBottom>
-            {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+            <Box flex={1}>
+              <Typography variant="h6" gutterBottom>
+                {currentQuestion.text}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
+              </Typography>
+            </Box>
+            <IconButton 
+              onClick={handleFlagQuestion}
+              color={flaggedQuestions[currentQuestion._id] ? 'error' : 'default'}
+              title={flaggedQuestions[currentQuestion._id] ? 'Unflag question' : 'Flag question for review'}
+            >
+              {flaggedQuestions[currentQuestion._id] ? <Flag /> : <FlagOutlined />}
+            </IconButton>
+          </Box>
 
           {/* Render based on question type */}
           {currentQuestion.question_type === 'fill_blanks' ? (
@@ -644,9 +713,7 @@ const QuizTaking: React.FC = () => {
           {currentQuestionIndex === questions.length - 1 ? (
             <Button
               variant="contained"
-              onClick={handleSubmitQuiz}
-              disabled={!answers[currentQuestion._id] || 
-                (Array.isArray(answers[currentQuestion._id]) && (answers[currentQuestion._id] as string[]).length === 0)}
+              onClick={handleSubmitClick}
             >
               Submit Quiz
             </Button>
@@ -660,6 +727,104 @@ const QuizTaking: React.FC = () => {
             </Button>
           )}
         </Box>
+
+        {/* Flag Dialog */}
+        <Dialog open={showFlagDialog} onClose={() => setShowFlagDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Flag Question for Review</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="textSecondary" gutterBottom>
+              Please provide a reason why this question should be reviewed:
+            </Typography>
+            <TextField
+              autoFocus
+              margin="dense"
+              fullWidth
+              multiline
+              rows={3}
+              value={flagReason}
+              onChange={(e) => setFlagReason(e.target.value)}
+              placeholder="e.g., Question is unclear, answer choices are confusing, typo in question..."
+              variant="outlined"
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowFlagDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveFlag} variant="contained" color="warning">
+              Flag Question
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Submit Confirmation Dialog */}
+        <Dialog open={showSubmitConfirmation} onClose={() => setShowSubmitConfirmation(false)} maxWidth="md" fullWidth>
+          <DialogTitle>Confirm Quiz Submission</DialogTitle>
+          <DialogContent>
+            {(() => {
+              const unansweredQuestions = questions.filter(q => !answers[q._id] || 
+                (Array.isArray(answers[q._id]) && (answers[q._id] as string[]).length === 0))
+              const flaggedQuestionsList = questions.filter(q => flaggedQuestions[q._id])
+              
+              return (
+                <Box>
+                  {unansweredQuestions.length > 0 && (
+                    <Box mb={3}>
+                      <Alert severity="warning" sx={{ mb: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom>
+                          You have {unansweredQuestions.length} unanswered question{unansweredQuestions.length !== 1 ? 's' : ''}
+                        </Typography>
+                      </Alert>
+                      <Typography variant="body2" fontWeight="bold" gutterBottom>
+                        Unanswered Questions:
+                      </Typography>
+                      {unansweredQuestions.map((q, idx) => (
+                        <Box key={q._id} sx={{ ml: 2, mb: 1 }}>
+                          <Typography variant="body2">
+                            {questions.indexOf(q) + 1}. {q.text.substring(0, 60)}
+                            {q.text.length > 60 ? '...' : ''}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {flaggedQuestionsList.length > 0 && (
+                    <Box>
+                      <Alert severity="info" sx={{ mb: 2 }}>
+                        <Typography variant="subtitle1" gutterBottom>
+                          You have flagged {flaggedQuestionsList.length} question{flaggedQuestionsList.length !== 1 ? 's' : ''} for review
+                        </Typography>
+                      </Alert>
+                      <Typography variant="body2" fontWeight="bold" gutterBottom>
+                        Flagged Questions:
+                      </Typography>
+                      {flaggedQuestionsList.map((q, idx) => (
+                        <Box key={q._id} sx={{ ml: 2, mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+                          <Typography variant="body2" fontWeight="medium">
+                            {questions.indexOf(q) + 1}. {q.text.substring(0, 60)}
+                            {q.text.length > 60 ? '...' : ''}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                            Reason: {flaggedQuestions[q._id]}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+
+                  <Typography variant="body1" sx={{ mt: 3 }}>
+                    Are you sure you want to submit your quiz?
+                  </Typography>
+                </Box>
+              )
+            })()}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowSubmitConfirmation(false)}>Go Back</Button>
+            <Button onClick={handleConfirmedSubmit} variant="contained" color="primary">
+              Submit Anyway
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </Box>
   )
