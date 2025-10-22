@@ -32,6 +32,50 @@ router.get("/", async (req, res) => {
 
 /**
  * @openapi
+ * /quizzes/groups:
+ *   get:
+ *     summary: Get all groups (for quiz selection)
+ *     description: Returns all available groups. Users can view all groups and take quizzes from any group.
+ *     tags:
+ *       - Quiz
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of all groups
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   name:
+ *                     type: string
+ *                   description:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized - missing or invalid token
+ *       500:
+ *         description: Server error
+ */
+router.get("/groups", async (req, res) => {
+  try {
+    const groups = await Group.getAll();
+    res.json(groups);
+  } catch (error: any) {
+    res.status(500).json({
+      error: "Failed to fetch groups",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
+  }
+});
+
+/**
+ * @openapi
  * /quizzes/{id}:
  *   get:
  *     summary: Get a specific quiz
@@ -159,50 +203,6 @@ router.post("/:id/attempt", async (req, res) => {
     tags_snapshot,
   });
   res.json(attempt);
-});
-
-/**
- * @openapi
- * /quizzes/groups:
- *   get:
- *     summary: Get all groups (for quiz selection)
- *     description: Returns all available groups. Users can view all groups and take quizzes from any group.
- *     tags:
- *       - Quiz
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of all groups
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   _id:
- *                     type: string
- *                   name:
- *                     type: string
- *                   description:
- *                     type: string
- *       401:
- *         description: Unauthorized - missing or invalid token
- *       500:
- *         description: Server error
- */
-router.get("/groups", async (req, res) => {
-  try {
-    const groups = await Group.getAll();
-    res.json(groups);
-  } catch (error: any) {
-    res.status(500).json({
-      error: "Failed to fetch groups",
-      details:
-        process.env.NODE_ENV !== "production" ? error.message : undefined,
-    });
-  }
 });
 
 export default router;
