@@ -41,18 +41,92 @@ const tables = [
     resolved_by INTEGER REFERENCES users(id),
     resolution_notes TEXT
   );`,
+  // Session Management Tables
+  `CREATE TABLE IF NOT EXISTS refresh_tokens (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    device_info TEXT,
+    ip_address VARCHAR(45),
+    revoked BOOLEAN DEFAULT FALSE
+  );`,
+  `CREATE TABLE IF NOT EXISTS sessions (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_token TEXT NOT NULL UNIQUE,
+    csrf_token TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    device_fingerprint TEXT,
+    is_active BOOLEAN DEFAULT TRUE
+  );`,
+  `CREATE TABLE IF NOT EXISTS login_attempts (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(45) NOT NULL,
+    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    successful BOOLEAN DEFAULT FALSE
+  );`,
+];
+
+const indexes = [
+  // Refresh tokens indexes
+  `CREATE INDEX IF NOT EXISTS idx_refresh_token ON refresh_tokens(token);`,
+  `CREATE INDEX IF NOT EXISTS idx_refresh_token_user_id ON refresh_tokens(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_refresh_token_expires_at ON refresh_tokens(expires_at);`,
+  // Sessions indexes
+  `CREATE INDEX IF NOT EXISTS idx_session_token ON sessions(session_token);`,
+  `CREATE INDEX IF NOT EXISTS idx_session_user_id ON sessions(user_id);`,
+  `CREATE INDEX IF NOT EXISTS idx_session_expires_at ON sessions(expires_at);`,
+  `CREATE INDEX IF NOT EXISTS idx_session_last_activity ON sessions(last_activity);`,
+  // Login attempts indexes
+  `CREATE INDEX IF NOT EXISTS idx_login_attempts_email_ip ON login_attempts(email, ip_address);`,
+  `CREATE INDEX IF NOT EXISTS idx_login_attempts_attempted_at ON login_attempts(attempted_at);`,
+];
+
+const functions = [
+  `CREATE OR REPLACE FUNCTION cleanup_expired_tokens()
+  RETURNS void AS $$
+  BEGIN
+    DELETE FROM refresh_tokens WHERE expires_at < NOW();
+    DELETE FROM sessions WHERE expires_at < NOW() OR 
+      (is_active = true AND last_activity < NOW() - INTERVAL '24 hours');
+    DELETE FROM login_attempts WHERE attempted_at < NOW() - INTERVAL '1 hour';
+  END;
+  $$ LANGUAGE plpgsql;`,
 ];
 
 async function main() {
   await client.connect();
   console.log("Creating PostgreSQL tables if they don't exist...\n");
 
+  // Create tables
   for (const createTableQuery of tables) {
     await client.query(createTableQuery);
   }
 
+  console.log("Creating indexes...\n");
+
+  // Create indexes
+  for (const createIndexQuery of indexes) {
+    await client.query(createIndexQuery);
+  }
+
+  console.log("Creating functions...\n");
+
+  // Create functions
+  for (const createFunctionQuery of functions) {
+    await client.query(createFunctionQuery);
+  }
+
   await client.end();
-  console.log("\n✅ All PostgreSQL tables are ready.");
+  console.log("\n✅ All PostgreSQL tables, indexes, and functions are ready.");
+  console.log("✅ Session management tables created successfully.");
 }
 
 main().catch((err) => {

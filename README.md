@@ -350,6 +350,24 @@ quizda/
 
 ---
 
+## 📚 Documentation
+
+For complete documentation including setup, authentication, session management, deployment, and troubleshooting, see **[DOCUMENTATION.md](./DOCUMENTATION.md)**.
+
+**Quick Links:**
+
+- [Quick Start Guide](./DOCUMENTATION.md#2-quick-start)
+- [Environment Setup](./DOCUMENTATION.md#3-environment-setup)
+- [Design System](./DOCUMENTATION.md#4-design-system)
+- [Question Types](./DOCUMENTATION.md#5-question-types)
+- [Authentication](./DOCUMENTATION.md#6-authentication)
+- [Session Management V2](./DOCUMENTATION.md#7-session-management)
+- [Migration Guides](./DOCUMENTATION.md#8-migration-guides)
+- [Deployment to Render](./DOCUMENTATION.md#9-deployment)
+- [Troubleshooting](./DOCUMENTATION.md#10-troubleshooting)
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
