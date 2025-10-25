@@ -65,31 +65,31 @@ const theme = createTheme({
     borderRadius: 16, // Card border radius
   },
   shadows: [
-    'none',
-    '0 2px 8px rgba(0, 0, 0, 0.1)', // soft shadow
-    '0 4px 12px rgba(0, 0, 0, 0.15)', // medium shadow
-    '0 8px 24px rgba(0, 0, 0, 0.2)', // heavy shadow
-    '0 2px 8px rgba(0, 0, 0, 0.1)',
-    '0 2px 8px rgba(0, 0, 0, 0.1)',
-    '0 4px 12px rgba(0, 0, 0, 0.15)',
-    '0 4px 12px rgba(0, 0, 0, 0.15)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
-    '0 8px 24px rgba(0, 0, 0, 0.2)',
+    'none', // 0
+    '0 2px 8px rgba(0, 0, 0, 0.1)', // 1 - soft shadow
+    '0 4px 12px rgba(0, 0, 0, 0.15)', // 2 - medium shadow
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 3 - heavy shadow
+    '0 2px 8px rgba(0, 0, 0, 0.1)', // 4
+    '0 2px 8px rgba(0, 0, 0, 0.1)', // 5
+    '0 4px 12px rgba(0, 0, 0, 0.15)', // 6
+    '0 4px 12px rgba(0, 0, 0, 0.15)', // 7
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 8
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 9
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 10
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 11
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 12
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 13
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 14
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 15
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 16
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 17
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 18
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 19
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 20
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 21
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 22
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 23
+    '0 8px 24px rgba(0, 0, 0, 0.2)', // 24
   ],
   components: {
     MuiButton: {
