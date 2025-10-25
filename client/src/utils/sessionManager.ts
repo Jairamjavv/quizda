@@ -23,7 +23,9 @@ class SessionManager {
    * Note: Access token is kept in memory only for XSS protection
    */
   private loadCsrfFromStorage() {
-    this.csrfToken = localStorage.getItem("csrfToken");
+    if (typeof window !== "undefined") {
+      this.csrfToken = localStorage.getItem("csrfToken");
+    }
     // Access token is NOT loaded from localStorage to prevent XSS attacks
     // It will be set on login and kept in memory only
   }
@@ -167,7 +169,9 @@ class SessionManager {
 
     // Store CSRF token in localStorage (less sensitive, needed for requests)
     // Access token kept in memory only to prevent XSS attacks
-    localStorage.setItem("csrfToken", csrfToken);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("csrfToken", csrfToken);
+    }
 
     // Set headers
     this.setAuthorizationHeader(accessToken);
@@ -210,9 +214,11 @@ class SessionManager {
     this.csrfToken = null;
 
     // Only remove CSRF token (access token was never stored)
-    localStorage.removeItem("csrfToken");
-    localStorage.removeItem("token"); // Legacy token
-    localStorage.removeItem("userEmail"); // Legacy email
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("csrfToken");
+      localStorage.removeItem("token"); // Legacy token
+      localStorage.removeItem("userEmail"); // Legacy email
+    }
 
     delete axios.defaults.headers.common["Authorization"];
     delete axios.defaults.headers.common["X-CSRF-Token"];
