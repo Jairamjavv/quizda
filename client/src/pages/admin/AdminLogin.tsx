@@ -17,7 +17,7 @@ const AdminLogin: React.FC = () => {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, logout } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,13 +26,13 @@ const AdminLogin: React.FC = () => {
     setLoading(true)
 
     try {
-      await login(email, password)
-      // Check if user is admin after login
-      const user = JSON.parse(atob(localStorage.getItem('token')!.split('.')[1]))
-      if (user.role === 'admin') {
+      const user = await login(email, password)
+      // Check if user is admin using server-validated data
+      if (user && user.role === 'admin') {
         navigate('/admin')
       } else {
         setError('Access denied. Admin privileges required.')
+        logout() // Clear the non-admin user session
         navigate('/auth/login')
       }
     } catch (err: any) {

@@ -12,7 +12,7 @@ interface User {
 interface AuthContextType {
   user: User | null
   token: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User>
   register: (email: string, password: string) => Promise<void>
   logout: () => void
   loading: boolean
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     logger.authAttempt('login', email);
     
     try {
@@ -80,13 +80,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       // Decode token to get user info
       const payload = JSON.parse(atob(newToken.split('.')[1]))
-      setUser({
+      const userData: User = {
         id: payload.id,
         email: userEmail,
         role: role || payload.role
-      })
+      }
+      setUser(userData)
       
       logger.info('User logged in successfully', { email, role });
+      
+      return userData
     } catch (error: any) {
       logger.authFailure('login', error);
       logger.error('Login failed', error, {
