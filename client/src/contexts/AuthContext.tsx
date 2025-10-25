@@ -23,6 +23,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 // Configure axios defaults - use environment variable in production
 const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 axios.defaults.baseURL = apiUrl;
+axios.defaults.withCredentials = true; // Enable cookies for V2 refresh tokens
+
+// Add CSRF token to requests that need it
+axios.interceptors.request.use((config) => {
+  const csrfToken = localStorage.getItem('csrfToken');
+  if (csrfToken && ['post', 'put', 'patch', 'delete'].includes(config.method?.toLowerCase() || '')) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+  return config;
+});
 
 logger.info('AuthContext initialized', { apiUrl });
 
@@ -69,27 +79,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await axios.post('/auth/login', { email, password })
-      const { token: newToken, email: userEmail, role } = response.data
+      
+      // Handle V2 API response format
+      const { accessToken, user: userData, csrfToken } = response.data
       
       logger.authSuccess('login', email);
       
-      setToken(newToken)
-      localStorage.setItem('token', newToken)
-      localStorage.setItem('userEmail', userEmail)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+      // Store access token and CSRF token
+      setToken(accessToken)
+      localStorage.setItem('token', accessToken)
+      localStorage.setItem('csrfToken', csrfToken)
+      localStorage.setItem('userEmail', userData.email)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
       
-      // Decode token to get user info
-      const payload = JSON.parse(atob(newToken.split('.')[1]))
-      const userData: User = {
-        id: payload.id,
-        email: userEmail,
-        role: role || payload.role
+      // Set user from response
+      const user: User = {
+        id: userData.id,
+        email: userData.email,
+        role: userData.role
       }
-      setUser(userData)
+      setUser(user)
       
-      logger.info('User logged in successfully', { email, role });
+      logger.info('User logged in successfully', { email, role: userData.role });
       
-      return userData
+      return user
     } catch (error: any) {
       logger.authFailure('login', error);
       logger.error('Login failed', error, {
@@ -106,24 +119,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     
     try {
       const response = await axios.post('/auth/register', { email, password })
-      const { token: newToken, email: userEmail, role } = response.data
+      
+      // Handle V2 API response format
+      const { accessToken, user: userData, csrfToken } = response.data
       
       logger.authSuccess('register', email);
       
-      setToken(newToken)
-      localStorage.setItem('token', newToken)
-      localStorage.setItem('userEmail', userEmail)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+      // Store access token and CSRF token
+      setToken(accessToken)
+      localStorage.setItem('token', accessToken)
+      localStorage.setItem('csrfToken', csrfToken)
+      localStorage.setItem('userEmail', userData.email)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`
       
-      // Decode token to get user info
-      const payload = JSON.parse(atob(newToken.split('.')[1]))
+      // Set user from response
       setUser({
-        id: payload.id,
-        email: userEmail,
-        role: role || payload.role
+        id: userData.id,
+        email: userData.email,
+        role: userData.role
       })
       
-      logger.info('User registered successfully', { email, role });
+      logger.info('User registered successfully', { email, role: userData.role });
     } catch (error: any) {
       logger.authFailure('register', error);
       logger.error('Registration failed', error, {
@@ -135,11 +151,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }
 
-  const logout = () => {
-    logger.info('User logged out');
+  const logout = async () => {
+    logger.info('User logging out');
+    
+    try {
+      // Call V2 logout endpoint to invalidate tokens
+      await axios.post('/auth/logout')
+    } catch (error) {
+      logger.error('Logout API call failed', error);
+      // Continue with local cleanup even if API call fails
+    }
+    
     setUser(null)
     setToken(null)
     localStorage.removeItem('token')
+    localStorage.removeItem('csrfToken')
     localStorage.removeItem('userEmail')
     delete axios.defaults.headers.common['Authorization']
   }
