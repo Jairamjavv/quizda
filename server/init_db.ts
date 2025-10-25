@@ -124,33 +124,6 @@ async function main() {
     await client.query(createFunctionQuery);
   }
 
-  // Migration: Rename 'token' column to 'token_hash' if needed
-  try {
-    const checkColumn = await client.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name='refresh_tokens' AND column_name='token'
-    `);
-
-    if (checkColumn.rows.length > 0) {
-      console.log(
-        "\n⚠️  Migrating refresh_tokens table: renaming 'token' to 'token_hash'..."
-      );
-      await client.query(
-        `ALTER TABLE refresh_tokens RENAME COLUMN token TO token_hash;`
-      );
-      console.log("✅ Migration completed: tokens are now stored as hashes.");
-      console.log(
-        "⚠️  Note: Existing tokens have been invalidated. Users will need to re-login."
-      );
-    }
-  } catch (error: any) {
-    // Column already named correctly or doesn't exist
-    if (!error.message.includes("does not exist")) {
-      console.log("Migration check completed.");
-    }
-  }
-
   await client.end();
   console.log("\n✅ All PostgreSQL tables, indexes, and functions are ready.");
   console.log("✅ Session management tables created successfully.");
