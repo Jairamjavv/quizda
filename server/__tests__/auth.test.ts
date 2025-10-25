@@ -1,7 +1,7 @@
 import request from "supertest";
 import express from "express";
 import bodyParser from "body-parser";
-import authRoutes from "../routes/auth.js";
+import authRoutes from "../routes/authV2.js";
 import User from "../models/user.js";
 import bcrypt from "bcrypt";
 

@@ -4,11 +4,11 @@ import Question from "../models/question.js";
 import Attempt from "../models/attempt.js";
 import Group from "../models/group.js";
 import FlaggedQuestion from "../models/flaggedQuestion.js";
-import authenticateToken from "../middleware/auth.js";
+import { authenticateSession } from "../middleware/sessionAuth.js";
 
 const router = express.Router();
 
-router.use(authenticateToken);
+router.use(authenticateSession);
 
 /**
  * @openapi
@@ -184,11 +184,10 @@ router.get("/:id/questions", async (req, res) => {
  *         description: Unauthorized
  */
 router.post("/:id/attempt", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  if (!req.authenticatedUser) {
     return res.status(401).json({ error: "Unauthorized" });
   }
-  const user_id =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+  const user_id = req.authenticatedUser.id;
   const quiz_id = req.params.id;
   const {
     mode,
