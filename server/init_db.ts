@@ -45,7 +45,7 @@ const tables = [
   `CREATE TABLE IF NOT EXISTS refresh_tokens (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    token TEXT NOT NULL UNIQUE,
+    token_hash TEXT NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     device_info TEXT,
@@ -76,7 +76,7 @@ const tables = [
 
 const indexes = [
   // Refresh tokens indexes
-  `CREATE INDEX IF NOT EXISTS idx_refresh_token ON refresh_tokens(token);`,
+  `CREATE INDEX IF NOT EXISTS idx_refresh_token_hash ON refresh_tokens(token_hash);`,
   `CREATE INDEX IF NOT EXISTS idx_refresh_token_user_id ON refresh_tokens(user_id);`,
   `CREATE INDEX IF NOT EXISTS idx_refresh_token_expires_at ON refresh_tokens(expires_at);`,
   // Sessions indexes
@@ -124,9 +124,37 @@ async function main() {
     await client.query(createFunctionQuery);
   }
 
+  // Migration: Rename 'token' column to 'token_hash' if needed
+  try {
+    const checkColumn = await client.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name='refresh_tokens' AND column_name='token'
+    `);
+
+    if (checkColumn.rows.length > 0) {
+      console.log(
+        "\n⚠️  Migrating refresh_tokens table: renaming 'token' to 'token_hash'..."
+      );
+      await client.query(
+        `ALTER TABLE refresh_tokens RENAME COLUMN token TO token_hash;`
+      );
+      console.log("✅ Migration completed: tokens are now stored as hashes.");
+      console.log(
+        "⚠️  Note: Existing tokens have been invalidated. Users will need to re-login."
+      );
+    }
+  } catch (error: any) {
+    // Column already named correctly or doesn't exist
+    if (!error.message.includes("does not exist")) {
+      console.log("Migration check completed.");
+    }
+  }
+
   await client.end();
   console.log("\n✅ All PostgreSQL tables, indexes, and functions are ready.");
   console.log("✅ Session management tables created successfully.");
+  console.log("✅ Security: Refresh tokens are stored as SHA-256 hashes.");
 }
 
 main().catch((err) => {

@@ -196,7 +196,8 @@ router.post("/login", rateLimitLogin, async (req, res) => {
  */
 router.post("/refresh", async (req, res) => {
   try {
-    const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+    // Only accept refresh token from HTTP-only cookie to prevent token exfiltration
+    const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
       logger.warn("Refresh failed: no refresh token provided");

@@ -15,19 +15,17 @@ class SessionManager {
 
   constructor() {
     this.setupInterceptors();
-    this.loadTokensFromStorage();
+    this.loadCsrfFromStorage();
   }
 
   /**
-   * Load tokens from localStorage on initialization
+   * Load CSRF token from localStorage on initialization
+   * Note: Access token is kept in memory only for XSS protection
    */
-  private loadTokensFromStorage() {
-    this.accessToken = localStorage.getItem("accessToken");
+  private loadCsrfFromStorage() {
     this.csrfToken = localStorage.getItem("csrfToken");
-
-    if (this.accessToken) {
-      this.setAuthorizationHeader(this.accessToken);
-    }
+    // Access token is NOT loaded from localStorage to prevent XSS attacks
+    // It will be set on login and kept in memory only
   }
 
   /**
@@ -167,8 +165,8 @@ class SessionManager {
     this.accessToken = accessToken;
     this.csrfToken = csrfToken;
 
-    // Store in localStorage
-    localStorage.setItem("accessToken", accessToken);
+    // Store CSRF token in localStorage (less sensitive, needed for requests)
+    // Access token kept in memory only to prevent XSS attacks
     localStorage.setItem("csrfToken", csrfToken);
 
     // Set headers
@@ -211,7 +209,7 @@ class SessionManager {
     this.accessToken = null;
     this.csrfToken = null;
 
-    localStorage.removeItem("accessToken");
+    // Only remove CSRF token (access token was never stored)
     localStorage.removeItem("csrfToken");
     localStorage.removeItem("token"); // Legacy token
     localStorage.removeItem("userEmail"); // Legacy email

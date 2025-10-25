@@ -1,10 +1,11 @@
 import pool from "../db.js";
 import { logger } from "../logger.js";
+import { hashToken, compareTokenHash } from "../utils/tokenUtils.js";
 
 export interface RefreshToken {
   id: number;
   user_id: number;
-  token: string;
+  token_hash: string; // Store hash instead of plaintext
   expires_at: Date;
   created_at: Date;
   device_info?: string;
@@ -15,6 +16,7 @@ export interface RefreshToken {
 class RefreshTokenModel {
   /**
    * Create a new refresh token
+   * Note: Token is hashed before storage to prevent plaintext token theft
    */
   static async create(
     userId: number,
@@ -24,11 +26,14 @@ class RefreshTokenModel {
     ipAddress?: string
   ): Promise<RefreshToken> {
     try {
+      // Hash the token before storing
+      const tokenHash = hashToken(token);
+
       const result = await pool.query(
-        `INSERT INTO refresh_tokens (user_id, token, expires_at, device_info, ip_address)
+        `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, device_info, ip_address)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING *`,
-        [userId, token, expiresAt, deviceInfo, ipAddress]
+        [userId, tokenHash, expiresAt, deviceInfo, ipAddress]
       );
 
       logger.info("Refresh token created", {
@@ -45,13 +50,15 @@ class RefreshTokenModel {
   }
 
   /**
-   * Find a refresh token by token string
+   * Find a refresh token by token string (compares hash)
    */
   static async findByToken(token: string): Promise<RefreshToken | null> {
     try {
+      const tokenHash = hashToken(token);
+
       const result = await pool.query(
-        `SELECT * FROM refresh_tokens WHERE token = $1 AND revoked = false`,
-        [token]
+        `SELECT * FROM refresh_tokens WHERE token_hash = $1 AND revoked = false`,
+        [tokenHash]
       );
       return result.rows[0] || null;
     } catch (error) {
@@ -65,9 +72,11 @@ class RefreshTokenModel {
    */
   static async revoke(token: string): Promise<boolean> {
     try {
+      const tokenHash = hashToken(token);
+
       const result = await pool.query(
-        `UPDATE refresh_tokens SET revoked = true WHERE token = $1`,
-        [token]
+        `UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1`,
+        [tokenHash]
       );
 
       logger.info("Refresh token revoked", { revokedCount: result.rowCount });

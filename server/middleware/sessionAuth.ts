@@ -49,16 +49,27 @@ export async function authenticateSession(
     try {
       decoded = verifyAccessToken(token);
     } catch (error: any) {
-      if (error.message === "Token expired") {
-        return res
-          .status(401)
-          .json({ error: "Token expired", code: "TOKEN_EXPIRED" });
-      }
-      logger.warn("Authentication failed: invalid token", {
+      // Log detailed error internally but return standardized response
+      logger.warn("Authentication failed: token verification error", {
         path: req.path,
         method: req.method,
+        errorType: error.message,
       });
-      return res.status(403).json({ error: "Invalid token" });
+
+      // Use consistent status code (401) but allow TOKEN_EXPIRED for refresh flow
+      // This is acceptable as it's needed for automatic refresh UX
+      // Still prevents detailed enumeration of other token states
+      if (error.message === "Token expired") {
+        return res.status(401).json({
+          error: "Authentication failed",
+          code: "TOKEN_EXPIRED",
+        });
+      }
+
+      return res.status(401).json({
+        error: "Authentication failed",
+        code: "INVALID_TOKEN",
+      });
     }
 
     // Validate session if sessionId is present

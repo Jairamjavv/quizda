@@ -127,18 +127,36 @@ export function getSessionExpiry(rememberMe: boolean = false): Date {
 }
 
 /**
- * Hash a token for storage (one-way hash)
+ * Hash a token for storage (one-way hash using SHA-256)
  */
 export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
 /**
- * Compare token with hash
+ * Compare token with hash using constant-time comparison
+ * Prevents timing attacks by ensuring equal-length buffers
  */
 export function compareTokenHash(token: string, hash: string): boolean {
   const tokenHash = hashToken(token);
-  return crypto.timingSafeEqual(Buffer.from(tokenHash), Buffer.from(hash));
+
+  // Ensure both strings are same length before comparison
+  // This prevents timing attacks and errors from timingSafeEqual
+  if (tokenHash.length !== hash.length) {
+    // Perform a dummy comparison to maintain constant time
+    crypto.timingSafeEqual(Buffer.from(tokenHash), Buffer.from(tokenHash));
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(tokenHash, "hex"),
+      Buffer.from(hash, "hex")
+    );
+  } catch (error) {
+    logger.error("Token comparison error", error);
+    return false;
+  }
 }
 
 /**
@@ -149,16 +167,31 @@ export function getUserAgent(req: any): string {
 }
 
 /**
- * Extract IP address from request (handles proxies)
+ * Extract IP address from request with trusted proxy validation
+ * Prevents IP spoofing by validating X-Forwarded-For header
  */
 export function getIpAddress(req: any): string {
-  return (
-    req.headers["x-forwarded-for"]?.split(",")[0] ||
-    req.headers["x-real-ip"] ||
-    req.connection?.remoteAddress ||
-    req.socket?.remoteAddress ||
-    "unknown"
-  );
+  // List of trusted proxy IP ranges (configure for your infrastructure)
+  const trustedProxies = process.env.TRUSTED_PROXIES?.split(",") || [];
+
+  // Get the direct connection IP
+  const directIp = req.connection?.remoteAddress || req.socket?.remoteAddress;
+
+  // Only trust X-Forwarded-For if request comes from trusted proxy
+  if (trustedProxies.length > 0 && directIp) {
+    const isTrustedProxy = trustedProxies.some((proxy) =>
+      directIp.includes(proxy.trim())
+    );
+
+    if (isTrustedProxy && req.headers["x-forwarded-for"]) {
+      // Take the leftmost (client) IP from X-Forwarded-For
+      const forwardedIps = req.headers["x-forwarded-for"].split(",");
+      return forwardedIps[0].trim();
+    }
+  }
+
+  // Fallback to direct connection IP or X-Real-IP for simple reverse proxies
+  return directIp || req.headers["x-real-ip"] || "unknown";
 }
 
 /**
