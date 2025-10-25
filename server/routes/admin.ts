@@ -111,11 +111,10 @@ router.get("/quizzes/:id", async (req, res) => {
  */
 router.post("/quizzes", async (req, res) => {
   try {
-    if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    if (!req.authenticatedUser) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    const created_by =
-      typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+    const created_by = req.authenticatedUser.id;
     res.json(await Quiz.create({ ...req.body, created_by }));
   } catch (error) {
     res.status(500).json({ error: "Failed to create quiz" });
@@ -458,11 +457,10 @@ router.get("/groups/:id", async (req, res) => {
  */
 router.post("/groups", async (req, res) => {
   try {
-    if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+    if (!req.authenticatedUser) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-    const created_by =
-      typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+    const created_by = req.authenticatedUser.id;
     res.json(await Group.create({ ...req.body, created_by }));
   } catch (error) {
     res.status(500).json({ error: "Failed to create group" });

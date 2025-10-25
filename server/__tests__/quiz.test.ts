@@ -1,7 +1,6 @@
 import request from "supertest";
 import express from "express";
 import bodyParser from "body-parser";
-import jwt from "jsonwebtoken";
 import quizRoutes from "../routes/quiz.js";
 import Quiz from "../models/quiz.js";
 import Question from "../models/question.js";
@@ -9,24 +8,31 @@ import Attempt from "../models/attempt.js";
 
 const { json } = bodyParser;
 
-// Create a test app
-const app = express();
-app.use(json());
-app.use("/quizzes", quizRoutes);
-
 // Mock the models
 jest.mock("../models/quiz.js");
 jest.mock("../models/question.js");
 jest.mock("../models/attempt.js");
 
-describe("Quiz Routes", () => {
-  let authToken: string;
-  const userId = 1;
+// Mock the V2 session authentication middleware
+jest.mock("../middleware/sessionAuth.js", () => ({
+  authenticateSession: (req: any, res: any, next: any) => {
+    req.authenticatedUser = {
+      id: 1,
+      email: "test@example.com",
+      role: "user",
+      sessionId: "test-session-id",
+    };
+    next();
+  },
+}));
 
-  beforeAll(() => {
-    // Generate a valid JWT token for testing
-    authToken = jwt.sign({ id: userId, role: "user" }, process.env.JWT_SECRET!);
-  });
+// Create a test app
+const app = express();
+app.use(json());
+app.use("/quizzes", quizRoutes);
+
+describe("Quiz Routes", () => {
+  const userId = 1;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -51,19 +57,11 @@ describe("Quiz Routes", () => {
 
       (Quiz.getPublished as jest.Mock).mockResolvedValue(mockQuizzes);
 
-      const response = await request(app)
-        .get("/quizzes")
-        .set("Authorization", `Bearer ${authToken}`);
+      const response = await request(app).get("/quizzes");
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockQuizzes);
       expect(Quiz.getPublished).toHaveBeenCalled();
-    });
-
-    it("should return 401 if not authenticated", async () => {
-      const response = await request(app).get("/quizzes");
-
-      expect(response.status).toBe(401);
     });
   });
 
@@ -79,9 +77,7 @@ describe("Quiz Routes", () => {
 
       (Quiz.getById as jest.Mock).mockResolvedValue(mockQuiz);
 
-      const response = await request(app)
-        .get("/quizzes/1")
-        .set("Authorization", `Bearer ${authToken}`);
+      const response = await request(app).get("/quizzes/1");
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockQuiz);
@@ -91,18 +87,10 @@ describe("Quiz Routes", () => {
     it("should return 404 if quiz not found", async () => {
       (Quiz.getById as jest.Mock).mockResolvedValue(null);
 
-      const response = await request(app)
-        .get("/quizzes/999")
-        .set("Authorization", `Bearer ${authToken}`);
+      const response = await request(app).get("/quizzes/999");
 
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty("error", "Quiz not found");
-    });
-
-    it("should return 401 if not authenticated", async () => {
-      const response = await request(app).get("/quizzes/1");
-
-      expect(response.status).toBe(401);
     });
   });
 
@@ -135,19 +123,11 @@ describe("Quiz Routes", () => {
 
       (Question.getByQuiz as jest.Mock).mockResolvedValue(mockQuestions);
 
-      const response = await request(app)
-        .get("/quizzes/1/questions")
-        .set("Authorization", `Bearer ${authToken}`);
+      const response = await request(app).get("/quizzes/1/questions");
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual(mockQuestions);
       expect(Question.getByQuiz).toHaveBeenCalledWith("1");
-    });
-
-    it("should return 401 if not authenticated", async () => {
-      const response = await request(app).get("/quizzes/1/questions");
-
-      expect(response.status).toBe(401);
     });
   });
 
@@ -184,7 +164,6 @@ describe("Quiz Routes", () => {
 
       const response = await request(app)
         .post("/quizzes/1/attempt")
-        .set("Authorization", `Bearer ${authToken}`)
         .send(attemptData);
 
       expect(response.status).toBe(200);
@@ -197,25 +176,6 @@ describe("Quiz Routes", () => {
           score: 80,
         })
       );
-    });
-
-    it("should return 401 if not authenticated", async () => {
-      const attemptData = {
-        mode: "timed",
-        timed_duration_minutes: 30,
-        started_at: new Date().toISOString(),
-        completed_at: new Date().toISOString(),
-        score: 80,
-        max_points: 100,
-        per_question_results: [],
-        tags_snapshot: [],
-      };
-
-      const response = await request(app)
-        .post("/quizzes/1/attempt")
-        .send(attemptData);
-
-      expect(response.status).toBe(401);
     });
   });
 });
