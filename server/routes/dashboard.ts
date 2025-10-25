@@ -1,13 +1,13 @@
 import express from "express";
 import Attempt from "../models/attempt.js";
-import authenticateToken from "../middleware/auth.js";
+import { authenticateSession } from "../middleware/sessionAuth.js";
 import { logger } from "../logger.js";
 import Group from "../models/group.js";
 import Quiz from "../models/quiz.js";
 
 const router = express.Router();
 
-router.use(authenticateToken);
+router.use(authenticateSession);
 
 // Type conversion utilities for PostgreSQL NUMERIC fields
 const TypeConverters = {
@@ -37,6 +37,11 @@ const TypeConverters = {
 
 // Helper function to extract and validate user ID from request
 function getUserId(req: express.Request): number | null {
+  // Use authenticatedUser from new session auth middleware
+  if (req.authenticatedUser && req.authenticatedUser.id) {
+    return req.authenticatedUser.id;
+  }
+  // Fallback to old auth middleware (for backwards compatibility)
   if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
     return null;
   }

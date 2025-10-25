@@ -4,12 +4,14 @@ import express from "express";
 import bodyParser from "body-parser";
 const { json } = bodyParser;
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import { logger } from "./logger.js";
+import { connectRedis } from "./redis.js";
 
 dotenv.config();
 
-import authRoutes from "./routes/auth.js";
+import authRoutes from "./routes/authV2.js";
 import adminRoutes from "./routes/admin.js";
 import quizRoutes from "./routes/quiz.js";
 import dashboardRoutes from "./routes/dashboard.js";
@@ -32,6 +34,7 @@ logger.info("CORS configured", { allowedOrigin: corsOptions.origin });
 
 app.use(cors(corsOptions));
 app.use(json());
+app.use(cookieParser());
 
 // Add request logging middleware
 app.use((req, res, next) => logger.requestLogger(req, res, next));
@@ -52,6 +55,13 @@ app.get("/", (req, res) =>
 app.get("/health", (req, res) => {
   logger.debug("Health check requested");
   res.json({ status: "healthy" });
+});
+
+// Initialize Redis connection
+connectRedis().catch((error) => {
+  logger.warn("Redis connection failed - continuing without token blacklist", {
+    error: error.message,
+  });
 });
 
 const PORT = process.env.PORT || 4000;

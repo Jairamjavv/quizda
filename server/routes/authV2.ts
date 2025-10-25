@@ -3,6 +3,7 @@ import bcrypt from "bcrypt";
 import User from "../models/user.js";
 import RefreshTokenModel from "../models/refreshToken.js";
 import SessionModel from "../models/session.js";
+import TokenBlacklist from "../models/tokenBlacklist.js";
 import {
   generateTokenPair,
   getTokenExpiry,
@@ -228,14 +229,19 @@ router.post("/refresh", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Get session for CSRF token
-    const session = await SessionModel.findByToken(refreshToken);
+    // Find active session for this user (if any)
+    const activeSessions = await SessionModel.getActiveSessions(user.id);
+    const activeSession = activeSessions.find((s: any) => s.is_active);
 
-    // Generate new access token
+    // Generate new CSRF token for the session
+    const newCsrfToken = activeSession ? generateCsrfToken() : undefined;
+
+    // Generate new tokens with sessionId if there's an active session
     const { accessToken, refreshToken: newRefreshToken } = generateTokenPair({
       id: user.id,
       email: user.email,
       role: user.role,
+      sessionId: activeSession?.session_token,
     });
 
     // Token rotation: revoke old refresh token and create new one
@@ -249,22 +255,6 @@ router.post("/refresh", async (req, res) => {
       getIpAddress(req)
     );
 
-    // Update session with new refresh token
-    if (session) {
-      await SessionModel.invalidate(refreshToken);
-      const csrfToken = generateCsrfToken();
-      const sessionExpiry = getSessionExpiry(false);
-      await SessionModel.create(
-        user.id,
-        newRefreshToken,
-        csrfToken,
-        sessionExpiry,
-        getIpAddress(req),
-        getUserAgent(req),
-        generateDeviceFingerprint(getUserAgent(req), getIpAddress(req))
-      );
-    }
-
     // Set new refresh token cookie
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
@@ -275,12 +265,20 @@ router.post("/refresh", async (req, res) => {
 
     logger.info("Token refreshed successfully", {
       userId: user.id,
+      hasSession: !!activeSession,
     });
 
-    res.json({
-      accessToken,
-      csrfToken: session?.csrf_token || generateCsrfToken(),
-    });
+    // Return new access token and CSRF token (if session exists)
+    if (newCsrfToken) {
+      res.json({
+        accessToken,
+        csrfToken: newCsrfToken,
+      });
+    } else {
+      res.json({
+        accessToken,
+      });
+    }
   } catch (error) {
     logger.error("Token refresh error", error);
     res.status(500).json({ error: "Token refresh failed" });
@@ -294,6 +292,14 @@ router.post("/logout", authenticateSession, async (req, res) => {
   try {
     const refreshToken = req.cookies.refreshToken;
     const userId = req.authenticatedUser?.id;
+
+    // Extract and blacklist the current access token
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const accessToken = authHeader.substring(7);
+      await TokenBlacklist.add(accessToken);
+      logger.debug("Access token blacklisted", { userId });
+    }
 
     if (refreshToken) {
       // Revoke refresh token
@@ -323,6 +329,14 @@ router.post("/logout-all", authenticateSession, async (req, res) => {
 
     if (!userId) {
       return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // Blacklist current access token
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const accessToken = authHeader.substring(7);
+      await TokenBlacklist.add(accessToken);
+      logger.debug("Access token blacklisted", { userId });
     }
 
     // Revoke all refresh tokens

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { verifyAccessToken } from "../utils/tokenUtils.js";
 import SessionModel from "../models/session.js";
 import RefreshTokenModel from "../models/refreshToken.js";
+import TokenBlacklist from "../models/tokenBlacklist.js";
 import { logger } from "../logger.js";
 import { getIpAddress, getUserAgent } from "../utils/tokenUtils.js";
 
@@ -72,6 +73,32 @@ export async function authenticateSession(
       });
     }
 
+    // Check if token is blacklisted (logged out)
+    const isBlacklisted = await TokenBlacklist.isBlacklisted(token);
+    if (isBlacklisted) {
+      logger.warn("Authentication failed: token is blacklisted", {
+        path: req.path,
+        method: req.method,
+      });
+      return res.status(401).json({
+        error: "Authentication failed",
+        code: "TOKEN_INVALIDATED",
+      });
+    }
+
+    // Attach user to request immediately after token verification
+    req.authenticatedUser = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      sessionId: decoded.sessionId,
+    };
+
+    logger.debug("Token verified successfully", {
+      userId: decoded.id,
+      role: decoded.role,
+    });
+
     // Validate session if sessionId is present
     if (decoded.sessionId) {
       const session = await SessionModel.findByToken(decoded.sessionId);
@@ -112,14 +139,6 @@ export async function authenticateSession(
       await SessionModel.updateActivity(decoded.sessionId);
       req.sessionToken = decoded.sessionId;
     }
-
-    // Attach user to request
-    req.authenticatedUser = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      sessionId: decoded.sessionId,
-    };
 
     logger.debug("Authentication successful", {
       userId: decoded.id,
