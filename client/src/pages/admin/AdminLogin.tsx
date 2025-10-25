@@ -43,30 +43,63 @@ const AdminLogin: React.FC = () => {
   }
 
   return (
-    <Container component="main" maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Quizda Admin
-          </Typography>
-          <Typography component="h2" variant="h5" align="center" gutterBottom>
-            Admin Sign In
-          </Typography>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #121212 0%, #1E1E1E 100%)',
+        padding: 2,
+      }}
+    >
+      <Container component="main" maxWidth="sm">
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            padding: { xs: 4, sm: 6 },
+            borderRadius: 4,
+            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+            border: '2px solid #FF7A00',
+          }}
+        >
+          <Box sx={{ textAlign: 'center', mb: 4 }}>
+            <Typography 
+              component="h1" 
+              variant="h3" 
+              sx={{ 
+                fontWeight: 700,
+                color: '#121212',
+                mb: 1,
+              }}
+            >
+              Quizda Admin
+            </Typography>
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                color: '#FF7A00',
+                fontWeight: 600,
+              }}
+            >
+              Admin Sign In
+            </Typography>
+          </Box>
           
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3,
+                borderRadius: 2,
+                border: '1px solid #FF7A00',
+              }}
+            >
               {error}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          <Box component="form" onSubmit={handleSubmit}>
             <TextField
               margin="normal"
               required
@@ -78,6 +111,7 @@ const AdminLogin: React.FC = () => {
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
             />
             <TextField
               margin="normal"
@@ -90,31 +124,42 @@ const AdminLogin: React.FC = () => {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              sx={{ mb: 3 }}
             />
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              color="secondary"
               disabled={loading}
+              sx={{
+                py: 2,
+                fontSize: '1.1rem',
+                mb: 2,
+              }}
             >
-              {loading ? <CircularProgress size={24} /> : 'Admin Sign In'}
+              {loading ? <CircularProgress size={24} sx={{ color: '#FFFFFF' }} /> : 'Admin Sign In'}
             </Button>
-            <Box textAlign="center">
+            <Box textAlign="center" sx={{ mt: 3 }}>
               <Button
                 variant="text"
                 onClick={() => navigate('/auth/login')}
-                sx={{ textDecoration: 'none' }}
+                sx={{ 
+                  color: '#00B15E',
+                  '&:hover': {
+                    bgcolor: 'rgba(0, 177, 94, 0.1)',
+                  },
+                }}
               >
-                <Typography variant="body2" color="primary">
-                  Back to User Login
+                <Typography variant="body2" fontWeight={500}>
+                  ← Back to User Login
                 </Typography>
               </Button>
             </Box>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   )
 }
 
