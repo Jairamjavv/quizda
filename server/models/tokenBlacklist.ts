@@ -1,6 +1,7 @@
 import { isRedisConnected, getClient } from "../redis.js";
 import { logger } from "../logger.js";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 /**
  * Token Blacklist Model
@@ -8,6 +9,15 @@ import jwt from "jsonwebtoken";
  */
 export class TokenBlacklist {
   private static readonly PREFIX = "blacklist:token:";
+
+  /**
+   * Hash a token using SHA-256 to prevent plaintext exposure in Redis
+   * @param token - JWT token to hash
+   * @returns SHA-256 hash of the token
+   */
+  private static hashToken(token: string): string {
+    return crypto.createHash("sha256").update(token).digest("hex");
+  }
 
   /**
    * Add a token to the blacklist
@@ -44,8 +54,9 @@ export class TokenBlacklist {
         return true;
       }
 
-      // Store token hash in Redis with TTL matching token expiration
-      const key = `${this.PREFIX}${token}`;
+      // Hash token to prevent plaintext exposure in Redis
+      const tokenHash = this.hashToken(token);
+      const key = `${this.PREFIX}${tokenHash}`;
       await redisClient.setEx(key, ttl, "1");
 
       logger.debug("Token blacklisted", { ttl });
@@ -63,22 +74,33 @@ export class TokenBlacklist {
    */
   static async isBlacklisted(token: string): Promise<boolean> {
     if (!isRedisConnected()) {
-      // If Redis is down, allow the token (fail open)
-      // Alternative: fail closed by returning true
-      return false;
+      // If Redis is down, fail closed for security (reject all tokens)
+      // Can be configured via environment variable if needed
+      const failClosed = process.env.REDIS_FAIL_CLOSED !== "false";
+      if (failClosed) {
+        logger.warn("Redis unavailable - failing closed (rejecting token)");
+        return true; // Treat as blacklisted when Redis is down
+      }
+      return false; // Fail open if explicitly configured
     }
 
     try {
       const redisClient = getClient();
-      if (!redisClient) return false;
+      if (!redisClient) {
+        // No client available - fail closed by default
+        return process.env.REDIS_FAIL_CLOSED !== "false";
+      }
 
-      const key = `${this.PREFIX}${token}`;
+      // Hash token before checking Redis
+      const tokenHash = this.hashToken(token);
+      const key = `${this.PREFIX}${tokenHash}`;
       const result = await redisClient.exists(key);
       return result === 1;
     } catch (error) {
       logger.error("Failed to check token blacklist", error);
-      // Fail open - allow token if Redis error
-      return false;
+      // Fail closed on error for security
+      const failClosed = process.env.REDIS_FAIL_CLOSED !== "false";
+      return failClosed;
     }
   }
 
@@ -96,7 +118,9 @@ export class TokenBlacklist {
       const redisClient = getClient();
       if (!redisClient) return false;
 
-      const key = `${this.PREFIX}${token}`;
+      // Hash token before removing from Redis
+      const tokenHash = this.hashToken(token);
+      const key = `${this.PREFIX}${tokenHash}`;
       const result = await redisClient.del(key);
       return result === 1;
     } catch (error) {

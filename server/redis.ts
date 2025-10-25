@@ -16,7 +16,6 @@ function createRedisClient() {
       // Enable TLS for Upstash (rediss:// URLs)
       ...(isUpstash && {
         tls: true,
-        rejectUnauthorized: false, // Upstash certificates are valid but sometimes Node needs this
       }),
       reconnectStrategy: (retries) => {
         if (retries > 10) {
