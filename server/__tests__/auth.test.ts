@@ -3,6 +3,8 @@ import express from "express";
 import bodyParser from "body-parser";
 import authRoutes from "../routes/authV2.js";
 import User from "../models/user.js";
+import RefreshTokenModel from "../models/refreshToken.js";
+import SessionModel from "../models/session.js";
 import bcrypt from "bcrypt";
 
 const { json } = bodyParser;
@@ -12,8 +14,11 @@ const app = express();
 app.use(json());
 app.use("/auth", authRoutes);
 
-// Mock the User model
+// Mock all database models
 jest.mock("../models/user.js");
+jest.mock("../models/refreshToken.js");
+jest.mock("../models/session.js");
+jest.mock("../models/tokenBlacklist.js");
 
 describe("Auth Routes", () => {
   beforeEach(() => {
@@ -30,6 +35,8 @@ describe("Auth Routes", () => {
 
       (User.findByEmail as jest.Mock).mockResolvedValue(null);
       (User.create as jest.Mock).mockResolvedValue(mockUser);
+      (RefreshTokenModel.create as jest.Mock).mockResolvedValue({});
+      (SessionModel.create as jest.Mock).mockResolvedValue({});
 
       const response = await request(app).post("/auth/register").send({
         email: "test@example.com",
@@ -37,9 +44,10 @@ describe("Auth Routes", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("token");
-      expect(response.body).toHaveProperty("email", "test@example.com");
-      expect(response.body).toHaveProperty("role", "user");
+      expect(response.body).toHaveProperty("accessToken");
+      expect(response.body).toHaveProperty("user");
+      expect(response.body.user).toHaveProperty("email", "test@example.com");
+      expect(response.body.user).toHaveProperty("role", "user");
     });
 
     it("should return 400 if email already exists", async () => {
@@ -54,7 +62,7 @@ describe("Auth Routes", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty("error", "Email exists");
+      expect(response.body).toHaveProperty("error", "Email already exists");
     });
 
     it("should register user with admin role if specified", async () => {
@@ -66,6 +74,8 @@ describe("Auth Routes", () => {
 
       (User.findByEmail as jest.Mock).mockResolvedValue(null);
       (User.create as jest.Mock).mockResolvedValue(mockUser);
+      (RefreshTokenModel.create as jest.Mock).mockResolvedValue({});
+      (SessionModel.create as jest.Mock).mockResolvedValue({});
 
       const response = await request(app).post("/auth/register").send({
         email: "admin@example.com",
@@ -74,7 +84,8 @@ describe("Auth Routes", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("role", "admin");
+      expect(response.body).toHaveProperty("user");
+      expect(response.body.user).toHaveProperty("role", "admin");
     });
   });
 
@@ -90,6 +101,9 @@ describe("Auth Routes", () => {
 
       (User.findByEmail as jest.Mock).mockResolvedValue(mockUser);
       (User.updateLastLogin as jest.Mock).mockResolvedValue(undefined);
+      (RefreshTokenModel.create as jest.Mock).mockResolvedValue({});
+      (SessionModel.create as jest.Mock).mockResolvedValue({});
+      (SessionModel.getActiveSessions as jest.Mock).mockResolvedValue([]);
 
       const response = await request(app).post("/auth/login").send({
         email: "test@example.com",
@@ -97,9 +111,10 @@ describe("Auth Routes", () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty("token");
-      expect(response.body).toHaveProperty("email", "test@example.com");
-      expect(response.body).toHaveProperty("role", "user");
+      expect(response.body).toHaveProperty("accessToken");
+      expect(response.body).toHaveProperty("user");
+      expect(response.body.user).toHaveProperty("email", "test@example.com");
+      expect(response.body.user).toHaveProperty("role", "user");
       expect(User.updateLastLogin).toHaveBeenCalledWith(1);
     });
 
