@@ -62,14 +62,19 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
         // Check if token is expired
         if (sessionManager.isTokenExpired()) {
           logger.info('Token expired, refreshing...');
-          await sessionManager.refreshToken();
-          const refreshedUser = sessionManager.getCurrentUser();
-          if (refreshedUser) {
-            setUser({
-              id: refreshedUser.id,
-              email: refreshedUser.email,
-              role: refreshedUser.role as 'user' | 'admin'
-            });
+          try {
+            await sessionManager.refreshToken();
+            const refreshedUser = sessionManager.getCurrentUser();
+            if (refreshedUser) {
+              setUser({
+                id: refreshedUser.id,
+                email: refreshedUser.email,
+                role: refreshedUser.role as 'user' | 'admin'
+              });
+            }
+          } catch (refreshError) {
+            logger.warn('Token refresh failed, keeping existing session');
+            // Don't clear session if refresh fails - user might still be valid
           }
         } else {
           setUser({
@@ -80,12 +85,14 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
         }
         
         logger.info('Session verified', { userId: currentUser.id, role: currentUser.role });
-      } else {
-        sessionManager.clearSession();
       }
     } catch (error) {
       logger.error('Session verification failed', error);
-      sessionManager.clearSession();
+      // Only clear session if we don't already have a user
+      // This prevents clearing session immediately after login
+      if (!user) {
+        sessionManager.clearSession();
+      }
     } finally {
       setLoading(false);
     }
