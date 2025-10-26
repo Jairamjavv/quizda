@@ -31,7 +31,7 @@ import {
   Visibility,
   VisibilityOff
 } from '@mui/icons-material'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
 import axios from 'axios'
 
 interface QuizSummary {

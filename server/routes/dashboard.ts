@@ -37,15 +37,11 @@ const TypeConverters = {
 
 // Helper function to extract and validate user ID from request
 function getUserId(req: express.Request): number | null {
-  // Use authenticatedUser from new session auth middleware
+  // Use authenticatedUser from session auth middleware
   if (req.authenticatedUser && req.authenticatedUser.id) {
     return req.authenticatedUser.id;
   }
-  // Fallback to old auth middleware (for backwards compatibility)
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
-    return null;
-  }
-  return TypeConverters.toUserId(req.user.id as string | number);
+  return null;
 }
 
 /**
@@ -274,12 +270,11 @@ router.get("/", async (req, res) => {
  *         description: Unauthorized
  */
 router.get("/attempts", async (req, res) => {
-  if (!req.user || typeof req.user !== "object" || !("id" in req.user)) {
+  if (!req.authenticatedUser) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const userId =
-    typeof req.user.id === "string" ? parseInt(req.user.id, 10) : req.user.id;
+  const userId = req.authenticatedUser.id;
 
   try {
     const attempts = await Attempt.getByUser(userId);

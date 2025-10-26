@@ -39,7 +39,7 @@ import {
   Flag,
   FlagOutlined
 } from '@mui/icons-material'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 import axios from 'axios'
 
 type QuestionType = 'mcq_single' | 'mcq_multiple' | 'true_false' | 'fill_blanks';

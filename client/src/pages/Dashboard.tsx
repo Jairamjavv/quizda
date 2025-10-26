@@ -37,7 +37,7 @@ import {
   SelfImprovement
 } from '@mui/icons-material'
 import { PieChart } from '@mui/x-charts/PieChart'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 import axios from 'axios'
 
 interface RecentAttempt {
