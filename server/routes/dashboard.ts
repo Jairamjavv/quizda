@@ -367,4 +367,75 @@ router.get("/groups", async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /dashboard/attempts/{attemptId}:
+ *   get:
+ *     summary: Get detailed information about a specific attempt
+ *     tags:
+ *       - Dashboard
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: attemptId
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: The attempt ID
+ *     responses:
+ *       200:
+ *         description: Detailed attempt information including per-question results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Attempt not found
+ */
+router.get("/attempts/:attemptId", async (req, res) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    logger.warn("Attempt to access attempt details without authentication");
+    return res.status(401).json({ error: "User not authenticated" });
+  }
+
+  const attemptId = Number.parseInt(req.params.attemptId, 10);
+  if (isNaN(attemptId)) {
+    return res.status(400).json({ error: "Invalid attempt ID" });
+  }
+
+  try {
+    const attempt = await Attempt.getById(attemptId);
+
+    if (!attempt) {
+      return res.status(404).json({ error: "Attempt not found" });
+    }
+
+    // Verify the attempt belongs to the authenticated user
+    if (attempt.user_id !== userId) {
+      logger.warn(
+        `User ${userId} attempted to access attempt ${attemptId} belonging to user ${attempt.user_id}`
+      );
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json(attempt);
+  } catch (error: any) {
+    logger.error("Error fetching attempt details:", {
+      error: error.message,
+      stack: error.stack,
+      attemptId,
+      userId,
+    });
+    res.status(500).json({
+      error: "Failed to fetch attempt details",
+      details:
+        process.env.NODE_ENV !== "production" ? error.message : undefined,
+    });
+  }
+});
+
 export default router;

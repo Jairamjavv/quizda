@@ -10,6 +10,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import QuizTaking from './pages/QuizTaking'
 import QuizHistory from './pages/QuizHistory'
+import AttemptReview from './pages/AttemptReview'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminQuizzes from './pages/admin/AdminQuizzes'
 import AdminGroups from './pages/admin/AdminGroups'
@@ -57,6 +58,7 @@ function App() {
         <Route path="/quiz" element={<ProtectedRoute />}>
           <Route path="new" element={<QuizTaking />} />
           <Route path="history" element={<QuizHistory />} />
+          <Route path="attempt/:attemptId" element={<AttemptReview />} />
         </Route>
       </Routes>
       

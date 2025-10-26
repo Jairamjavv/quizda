@@ -26,7 +26,8 @@ import {
   ArrowBack,
   Quiz,
   Timer,
-  Schedule
+  Schedule,
+  Visibility
 } from '@mui/icons-material'
 import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 import axios from 'axios'
@@ -242,6 +243,7 @@ const QuizHistory: React.FC = () => {
                       <TableCell>Score</TableCell>
                       <TableCell>Tags</TableCell>
                       <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -297,6 +299,18 @@ const QuizHistory: React.FC = () => {
                             color={attempt.completed_at ? 'success' : 'warning'}
                             size="small"
                           />
+                        </TableCell>
+                        <TableCell>
+                          {attempt.completed_at && (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<Visibility />}
+                              onClick={() => navigate(`/quiz/attempt/${attempt.id}`)}
+                            >
+                              View Details
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

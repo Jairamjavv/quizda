@@ -103,6 +103,8 @@ const QuizTaking: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([])
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
+  const [questionTimeSpent, setQuestionTimeSpent] = useState<Record<string, number>>({}) // questionId -> seconds
+  const [questionStartTime, setQuestionStartTime] = useState<Date | null>(null) // When current question was shown
   const [flaggedQuestions, setFlaggedQuestions] = useState<Record<string, string>>({}) // questionId -> reason
   const [showFlagDialog, setShowFlagDialog] = useState(false)
   const [flagReason, setFlagReason] = useState('')
@@ -218,6 +220,7 @@ const QuizTaking: React.FC = () => {
     setMode(selectedMode)
     setShowModeSelection(false)
     setStartedAt(new Date())
+    setQuestionStartTime(new Date()) // Start tracking time for first question
     if (selectedMode === 'timed' && duration) {
       setTimeLeft(duration * 60) // Convert minutes to seconds
     }
@@ -249,14 +252,36 @@ const QuizTaking: React.FC = () => {
   }
 
   const handleNextQuestion = () => {
+    // Save time spent on current question before moving
+    saveCurrentQuestionTime()
+    
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1)
+      // Start timer for next question
+      setQuestionStartTime(new Date())
     }
   }
 
   const handlePreviousQuestion = () => {
+    // Save time spent on current question before moving
+    saveCurrentQuestionTime()
+    
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1)
+      // Start timer for previous question
+      setQuestionStartTime(new Date())
+    }
+  }
+
+  const saveCurrentQuestionTime = () => {
+    if (questionStartTime && questions[currentQuestionIndex]) {
+      const currentQuestionId = questions[currentQuestionIndex]._id
+      const timeSpent = Math.floor((new Date().getTime() - questionStartTime.getTime()) / 1000)
+      
+      setQuestionTimeSpent(prev => ({
+        ...prev,
+        [currentQuestionId]: (prev[currentQuestionId] || 0) + timeSpent
+      }))
     }
   }
 
@@ -303,12 +328,28 @@ const QuizTaking: React.FC = () => {
   }
 
   const calculateScore = () => {
+    // Save time for the last question before calculating
+    saveCurrentQuestionTime()
+    
     let totalScore = 0
     let maxPoints = 0
-    const perQuestionResults: QuizAttempt['perQuestionResults'] = []
+    let totalStreakBonus = 0
+    let totalSpeedBonus = 0
+    let totalTimeSpent = 0
+    let currentStreak = 0
+    const perQuestionResults: Array<{
+      questionId: string
+      chosenChoiceId: string
+      correct: boolean
+      pointsAwarded: number
+      timeSpent: number
+      streakBonus: number
+      speedBonus: number
+      difficultyLevel: string
+    }> = []
     const allTags = new Set<string>()
 
-    questions.forEach(question => {
+    questions.forEach((question, index) => {
       maxPoints += question.points
       question.tags.forEach(tag => allTags.add(tag))
       
@@ -340,14 +381,60 @@ const QuizTaking: React.FC = () => {
         correct = chosenChoice?.is_correct || false
       }
 
-      const pointsAwarded = correct ? question.points : 0
+      // Update streak counter
+      if (correct) {
+        currentStreak++
+      } else {
+        currentStreak = 0
+      }
+
+      // Calculate base points
+      const basePoints = correct ? question.points : 0
+      
+      // Calculate streak bonus (only for correct answers)
+      // 3+ streak: 10% bonus, 5+ streak: 20% bonus, 7+ streak: 30% bonus
+      let streakBonus = 0
+      if (correct && currentStreak >= 3) {
+        let streakMultiplier = 0
+        if (currentStreak >= 7) streakMultiplier = 0.3
+        else if (currentStreak >= 5) streakMultiplier = 0.2
+        else if (currentStreak >= 3) streakMultiplier = 0.1
+        
+        streakBonus = Math.round(basePoints * streakMultiplier * 100) / 100
+        totalStreakBonus += streakBonus
+      }
+
+      // Calculate speed bonus (only for correct answers)
+      // Optimal time: 30 seconds per question
+      // < 15 seconds: 30% bonus, < 20 seconds: 20% bonus, < 25 seconds: 10% bonus
+      let speedBonus = 0
+      const timeSpent = questionTimeSpent[question._id] || 0
+      totalTimeSpent += timeSpent
+      
+      if (correct && timeSpent > 0) {
+        let speedMultiplier = 0
+        if (timeSpent < 15) speedMultiplier = 0.3
+        else if (timeSpent < 20) speedMultiplier = 0.2
+        else if (timeSpent < 25) speedMultiplier = 0.1
+        
+        if (speedMultiplier > 0) {
+          speedBonus = Math.round(basePoints * speedMultiplier * 100) / 100
+          totalSpeedBonus += speedBonus
+        }
+      }
+
+      const pointsAwarded = basePoints + streakBonus + speedBonus
       totalScore += pointsAwarded
       
       perQuestionResults.push({
         questionId: question._id,
         chosenChoiceId: chosenChoiceId,
         correct,
-        pointsAwarded
+        pointsAwarded,
+        timeSpent,
+        streakBonus,
+        speedBonus,
+        difficultyLevel: '' // Empty for now, to be used in future
       })
     })
 
@@ -355,7 +442,10 @@ const QuizTaking: React.FC = () => {
       score: totalScore,
       maxPoints,
       perQuestionResults,
-      tagsSnapshot: Array.from(allTags)
+      tagsSnapshot: Array.from(allTags),
+      streakBonus: totalStreakBonus,
+      speedBonus: totalSpeedBonus,
+      totalTimeSpent
     }
   }
 
@@ -363,7 +453,15 @@ const QuizTaking: React.FC = () => {
     if (!quiz || !startedAt) return
 
     const completedAt = new Date()
-    const { score, maxPoints, perQuestionResults, tagsSnapshot } = calculateScore()
+    const { 
+      score, 
+      maxPoints, 
+      perQuestionResults, 
+      tagsSnapshot,
+      streakBonus,
+      speedBonus,
+      totalTimeSpent 
+    } = calculateScore()
 
     try {
       // Prepare flagged questions data
@@ -376,14 +474,17 @@ const QuizTaking: React.FC = () => {
 
       const attemptData = {
         mode,
-        timed_duration_minutes: mode === 'timed' ? Math.ceil((startedAt.getTime() - completedAt.getTime()) / (1000 * 60)) : undefined,
+        timed_duration_minutes: mode === 'timed' ? Math.ceil((completedAt.getTime() - startedAt.getTime()) / (1000 * 60)) : undefined,
         started_at: startedAt.toISOString(),
         completed_at: completedAt.toISOString(),
         score,
         max_points: maxPoints,
         per_question_results: perQuestionResults,
         tags_snapshot: tagsSnapshot,
-        flagged_questions: flaggedData
+        flagged_questions: flaggedData,
+        streak_bonus: streakBonus,
+        speed_bonus: speedBonus,
+        total_time_spent: totalTimeSpent
       }
 
       const response = await axios.post(`/quizzes/${quiz._id}/attempt`, attemptData)
