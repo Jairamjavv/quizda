@@ -1,37 +1,30 @@
 import { createClient } from "redis";
+import { Redis as UpstashRedis } from "@upstash/redis";
 import { logger } from "./logger.js";
 
-let redisClient: ReturnType<typeof createClient> | null = null;
+// Support both traditional Redis (TCP) and Upstash (REST)
+type RedisClient = ReturnType<typeof createClient> | null;
+type UpstashClient = UpstashRedis | null;
 
-// Create Redis client with connection retry logic
-function createRedisClient(): ReturnType<typeof createClient> | null {
-  const redisUrl = process.env.REDIS_URL;
+let redisClient: RedisClient = null;
+let upstashClient: UpstashClient = null;
+let redisType: "traditional" | "upstash" | "disabled" = "disabled";
 
-  // Log environment variable status for debugging
-  if (!redisUrl) {
-    logger.warn(
-      "REDIS_URL environment variable not set - Redis will be disabled"
-    );
-    logger.info(
-      "To enable Redis, set REDIS_URL in your Render environment variables"
-    );
-    logger.info(
-      "Example: redis://default:password@host:port or rediss://... for TLS"
-    );
-    // Return null to skip Redis initialization
-    return null;
-  }
-
-  const isUpstash = redisUrl.startsWith("rediss://");
-  // Mask password in logs for security
+// Create traditional Redis client with connection retry logic
+function createTraditionalRedisClient(): RedisClient {
+  const redisUrl = process.env.REDIS_URL!;
+  const isSecure = redisUrl.startsWith("rediss://");
   const maskedUrl = redisUrl.replace(/:([^@]+)@/, ":****@");
-  logger.info("Creating Redis client", { url: maskedUrl, isUpstash });
+  logger.info("Creating traditional Redis client", {
+    url: maskedUrl,
+    secure: isSecure,
+  });
 
   const client = createClient({
     url: redisUrl,
     socket: {
-      // Enable TLS for Upstash (rediss:// URLs)
-      ...(isUpstash && {
+      // Enable TLS for secure connections
+      ...(isSecure && {
         tls: true,
       }),
       reconnectStrategy: (retries) => {
@@ -39,7 +32,6 @@ function createRedisClient(): ReturnType<typeof createClient> | null {
           logger.error("Redis: Max reconnection attempts reached");
           return new Error("Max reconnection attempts reached");
         }
-        // Exponential backoff: 50ms, 100ms, 200ms, etc.
         const delay = Math.min(retries * 50, 3000);
         logger.warn(
           `Redis: Reconnecting in ${delay}ms... (attempt ${retries})`
@@ -51,23 +43,48 @@ function createRedisClient(): ReturnType<typeof createClient> | null {
 
   // Error handling
   client.on("error", (error) => {
-    logger.error("Redis client error", error);
+    logger.error("Traditional Redis client error", error);
   });
 
   client.on("connect", () => {
-    logger.info("Redis client connected");
+    logger.info("Traditional Redis client connected");
   });
 
   client.on("ready", () => {
-    logger.info("Redis client ready");
+    logger.info("Traditional Redis client ready");
   });
 
   client.on("reconnecting", () => {
-    logger.warn("Redis client reconnecting...");
+    logger.warn("Traditional Redis client reconnecting...");
   });
 
   client.on("end", () => {
-    logger.warn("Redis client connection closed");
+    logger.warn("Traditional Redis client connection closed");
+  });
+
+  return client;
+}
+
+// Create Upstash Redis client (REST API)
+function createUpstashRedisClient(): UpstashClient {
+  const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!upstashUrl || !upstashToken) {
+    logger.error("Upstash credentials missing", {
+      hasUrl: !!upstashUrl,
+      hasToken: !!upstashToken,
+    });
+    return null;
+  }
+
+  logger.info("Creating Upstash Redis client (REST API)", {
+    url: upstashUrl.substring(0, 30) + "...",
+  });
+
+  const client = new UpstashRedis({
+    url: upstashUrl,
+    token: upstashToken,
   });
 
   return client;
@@ -76,44 +93,84 @@ function createRedisClient(): ReturnType<typeof createClient> | null {
 // Connect to Redis
 export async function connectRedis(): Promise<void> {
   try {
-    // Check if REDIS_URL is configured
-    if (!process.env.REDIS_URL) {
-      logger.warn("Redis disabled - REDIS_URL environment variable not set");
-      logger.info("Application will run without token blacklist feature");
-      logger.info("To enable Redis:");
-      logger.info("  1. Add a Redis service (e.g., Upstash free tier)");
-      logger.info("  2. Set REDIS_URL in Render environment variables");
-      logger.info("  3. Redeploy the service");
-      return;
-    }
-
-    if (!redisClient) {
-      const client = createRedisClient();
-      if (!client) {
-        logger.warn("Redis client creation skipped");
+    // Option 1: Check for Upstash REST API credentials (recommended for serverless)
+    if (
+      process.env.UPSTASH_REDIS_REST_URL &&
+      process.env.UPSTASH_REDIS_REST_TOKEN
+    ) {
+      logger.info("Detected Upstash REST API credentials");
+      const client = createUpstashRedisClient();
+      if (client) {
+        // Test the connection
+        await client.ping();
+        upstashClient = client;
+        redisType = "upstash";
+        logger.info("Upstash Redis (REST) connection initialized successfully");
         return;
       }
-      redisClient = client;
     }
 
-    await redisClient.connect();
-    const maskedUrl = process.env.REDIS_URL.replace(/:([^@]+)@/, ":****@");
-    logger.info("Redis connection initialized", { url: maskedUrl });
+    // Option 2: Check for traditional Redis URL
+    if (process.env.REDIS_URL) {
+      const redisUrl = process.env.REDIS_URL;
+
+      // Check if it's an HTTP/HTTPS URL (Upstash REST but wrong env vars)
+      if (redisUrl.startsWith("http://") || redisUrl.startsWith("https://")) {
+        logger.error(
+          "REDIS_URL appears to be an Upstash REST URL (starts with http/https)"
+        );
+        logger.error("Please use these environment variables instead:");
+        logger.error("  UPSTASH_REDIS_REST_URL = your Upstash REST URL");
+        logger.error("  UPSTASH_REDIS_REST_TOKEN = your Upstash token");
+        logger.warn("Redis disabled - incorrect configuration");
+        return;
+      }
+
+      logger.info("Detected traditional Redis URL");
+      const client = createTraditionalRedisClient();
+      if (client) {
+        await client.connect();
+        redisClient = client;
+        redisType = "traditional";
+        const maskedUrl = redisUrl.replace(/:([^@]+)@/, ":****@");
+        logger.info("Traditional Redis connection initialized", {
+          url: maskedUrl,
+        });
+        return;
+      }
+    }
+
+    // No Redis configuration found
+    logger.warn("Redis disabled - no configuration found");
+    logger.info("Application will run without token blacklist feature");
+    logger.info("To enable Redis, choose one option:");
+    logger.info("");
+    logger.info("Option 1 - Upstash (Recommended for Render/Serverless):");
+    logger.info("  UPSTASH_REDIS_REST_URL = https://your-db.upstash.io");
+    logger.info("  UPSTASH_REDIS_REST_TOKEN = your-token");
+    logger.info("");
+    logger.info("Option 2 - Traditional Redis:");
+    logger.info("  REDIS_URL = redis://user:password@host:port");
+    redisType = "disabled";
   } catch (error) {
     logger.error("Failed to connect to Redis", error);
-    // Continue without Redis - fallback to session-only invalidation
     logger.warn(
       "Token blacklist disabled - tokens will remain valid until expiry"
     );
+    redisType = "disabled";
   }
 }
 
 // Disconnect from Redis
 export async function disconnectRedis(): Promise<void> {
   try {
-    if (redisClient) {
+    if (redisType === "traditional" && redisClient) {
       await redisClient.quit();
-      logger.info("Redis connection closed");
+      logger.info("Traditional Redis connection closed");
+    } else if (redisType === "upstash") {
+      logger.info(
+        "Upstash Redis connection closed (REST API - no persistent connection)"
+      );
     }
   } catch (error) {
     logger.error("Error closing Redis connection", error);
@@ -122,12 +179,18 @@ export async function disconnectRedis(): Promise<void> {
 
 // Check if Redis is connected
 export function isRedisConnected(): boolean {
-  return redisClient?.isOpen ?? false;
+  if (redisType === "traditional") {
+    return redisClient?.isOpen ?? false;
+  } else if (redisType === "upstash") {
+    return upstashClient !== null;
+  }
+  return false;
 }
 
-// Get the Redis client instance
-export function getClient() {
-  return redisClient;
+// Get the Redis client instance (unified interface)
+export function getClient(): { type: typeof redisType; client: any } {
+  return {
+    type: redisType,
+    client: redisType === "traditional" ? redisClient : upstashClient,
+  };
 }
-
-export default redisClient;
