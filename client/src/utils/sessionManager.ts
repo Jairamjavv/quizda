@@ -144,6 +144,16 @@ class SessionManager {
           window.location.href = "/auth/login";
         }
 
+        // Handle token invalidation (logged out or blacklisted)
+        if (
+          error.response?.status === 401 &&
+          error.response?.data?.code === "TOKEN_INVALIDATED"
+        ) {
+          logger.warn("Token invalidated, clearing session");
+          this.clearSession();
+          window.location.href = "/auth/login";
+        }
+
         // Handle suspicious activity
         if (
           error.response?.status === 401 &&
