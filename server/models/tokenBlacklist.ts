@@ -31,8 +31,8 @@ export class TokenBlacklist {
     }
 
     try {
-      const redisClient = getClient();
-      if (!redisClient) {
+      const { type, client } = getClient();
+      if (!client) {
         logger.warn("Redis client not initialized");
         return false;
       }
@@ -57,9 +57,15 @@ export class TokenBlacklist {
       // Hash token to prevent plaintext exposure in Redis
       const tokenHash = this.hashToken(token);
       const key = `${this.PREFIX}${tokenHash}`;
-      await redisClient.setEx(key, ttl, "1");
 
-      logger.debug("Token blacklisted", { ttl });
+      // Use appropriate method based on client type
+      if (type === "traditional") {
+        await client.setEx(key, ttl, "1");
+      } else if (type === "upstash") {
+        await client.set(key, "1", { ex: ttl });
+      }
+
+      logger.debug("Token blacklisted", { ttl, redisType: type });
       return true;
     } catch (error) {
       logger.error("Failed to blacklist token", error);
@@ -74,32 +80,41 @@ export class TokenBlacklist {
    */
   static async isBlacklisted(token: string): Promise<boolean> {
     if (!isRedisConnected()) {
-      // If Redis is down, fail closed for security (reject all tokens)
-      // Can be configured via environment variable if needed
-      const failClosed = process.env.REDIS_FAIL_CLOSED !== "false";
+      // If Redis is down, fail open by default (allow tokens)
+      // Tokens are still validated by JWT signature and expiration
+      const failClosed = process.env.REDIS_FAIL_CLOSED === "true";
       if (failClosed) {
         logger.warn("Redis unavailable - failing closed (rejecting token)");
-        return true; // Treat as blacklisted when Redis is down
+        return true;
       }
-      return false; // Fail open if explicitly configured
+      logger.debug("Redis unavailable - failing open (allowing token)");
+      return false;
     }
 
     try {
-      const redisClient = getClient();
-      if (!redisClient) {
-        // No client available - fail closed by default
-        return process.env.REDIS_FAIL_CLOSED !== "false";
+      const { type, client } = getClient();
+      if (!client) {
+        const failClosed = process.env.REDIS_FAIL_CLOSED === "true";
+        return failClosed;
       }
 
       // Hash token before checking Redis
       const tokenHash = this.hashToken(token);
       const key = `${this.PREFIX}${tokenHash}`;
-      const result = await redisClient.exists(key);
-      return result === 1;
+
+      // Use appropriate method based on client type
+      if (type === "traditional") {
+        const result = await client.exists(key);
+        return result === 1;
+      } else if (type === "upstash") {
+        const result = await client.exists(key);
+        return result === 1;
+      }
+
+      return false;
     } catch (error) {
       logger.error("Failed to check token blacklist", error);
-      // Fail closed on error for security
-      const failClosed = process.env.REDIS_FAIL_CLOSED !== "false";
+      const failClosed = process.env.REDIS_FAIL_CLOSED === "true";
       return failClosed;
     }
   }
@@ -115,14 +130,23 @@ export class TokenBlacklist {
     }
 
     try {
-      const redisClient = getClient();
-      if (!redisClient) return false;
+      const { type, client } = getClient();
+      if (!client) return false;
 
       // Hash token before removing from Redis
       const tokenHash = this.hashToken(token);
       const key = `${this.PREFIX}${tokenHash}`;
-      const result = await redisClient.del(key);
-      return result === 1;
+
+      // Use appropriate method based on client type
+      if (type === "traditional") {
+        const result = await client.del(key);
+        return result === 1;
+      } else if (type === "upstash") {
+        const result = await client.del(key);
+        return result === 1;
+      }
+
+      return false;
     } catch (error) {
       logger.error("Failed to remove token from blacklist", error);
       return false;
@@ -139,11 +163,19 @@ export class TokenBlacklist {
     }
 
     try {
-      const redisClient = getClient();
-      if (!redisClient) return 0;
+      const { type, client } = getClient();
+      if (!client) return 0;
 
-      const keys = await redisClient.keys(`${this.PREFIX}*`);
-      return keys.length;
+      // Use appropriate method based on client type
+      if (type === "traditional") {
+        const keys = await client.keys(`${this.PREFIX}*`);
+        return keys.length;
+      } else if (type === "upstash") {
+        const keys = await client.keys(`${this.PREFIX}*`);
+        return keys.length;
+      }
+
+      return 0;
     } catch (error) {
       logger.error("Failed to count blacklisted tokens", error);
       return 0;
@@ -160,15 +192,25 @@ export class TokenBlacklist {
     }
 
     try {
-      const redisClient = getClient();
-      if (!redisClient) return 0;
+      const { type, client } = getClient();
+      if (!client) return 0;
 
-      const keys = await redisClient.keys(`${this.PREFIX}*`);
-      if (keys.length === 0) return 0;
+      // Use appropriate method based on client type
+      if (type === "traditional") {
+        const keys = await client.keys(`${this.PREFIX}*`);
+        if (keys.length === 0) return 0;
+        const result = await client.del(keys);
+        logger.info("Cleared token blacklist", { count: result });
+        return result;
+      } else if (type === "upstash") {
+        const keys = await client.keys(`${this.PREFIX}*`);
+        if (keys.length === 0) return 0;
+        const result = await client.del(...keys);
+        logger.info("Cleared token blacklist", { count: result });
+        return result;
+      }
 
-      const result = await redisClient.del(keys);
-      logger.info("Cleared token blacklist", { count: result });
-      return result;
+      return 0;
     } catch (error) {
       logger.error("Failed to clear token blacklist", error);
       return 0;
