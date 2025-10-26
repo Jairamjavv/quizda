@@ -26,7 +26,10 @@ const tables = [
     score DECIMAL(10,2) NOT NULL,
     max_points DECIMAL(10,2) NOT NULL,
     per_question_results JSONB NOT NULL,
-    tags_snapshot JSONB NOT NULL
+    tags_snapshot JSONB NOT NULL,
+    streak_bonus DECIMAL(10,2) DEFAULT 0,
+    speed_bonus DECIMAL(10,2) DEFAULT 0,
+    total_time_spent INTEGER DEFAULT 0
   );`,
   `CREATE TABLE IF NOT EXISTS flagged_questions (
     id SERIAL PRIMARY KEY,

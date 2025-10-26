@@ -5,6 +5,10 @@ interface PerQuestionResult {
   chosen_choice_id: string;
   correct: boolean;
   points_awarded: number;
+  time_spent?: number; // in seconds
+  streak_bonus?: number;
+  speed_bonus?: number;
+  difficulty_level?: string; // 'easy' | 'medium' | 'hard'
 }
 
 interface FlaggedQuestion {
@@ -25,6 +29,9 @@ const Attempt = {
     per_question_results,
     tags_snapshot,
     flagged_questions,
+    streak_bonus = 0,
+    speed_bonus = 0,
+    total_time_spent = 0,
   }: {
     user_id: number;
     quiz_id: string;
@@ -37,6 +44,9 @@ const Attempt = {
     per_question_results: PerQuestionResult[];
     tags_snapshot: string[];
     flagged_questions?: FlaggedQuestion[];
+    streak_bonus?: number;
+    speed_bonus?: number;
+    total_time_spent?: number;
   }) {
     const client = await pool.connect();
 
@@ -48,8 +58,9 @@ const Attempt = {
         `INSERT INTO attempts (
           user_id, quiz_id, mode, timed_duration_minutes, 
           started_at, completed_at, score, max_points, 
-          per_question_results, tags_snapshot
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+          per_question_results, tags_snapshot, streak_bonus, 
+          speed_bonus, total_time_spent
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
         [
           user_id,
           quiz_id,
@@ -61,6 +72,9 @@ const Attempt = {
           max_points,
           JSON.stringify(per_question_results),
           JSON.stringify(tags_snapshot),
+          streak_bonus,
+          speed_bonus,
+          total_time_spent,
         ]
       );
 

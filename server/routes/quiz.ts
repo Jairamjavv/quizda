@@ -199,6 +199,9 @@ router.post("/:id/attempt", async (req, res) => {
     per_question_results,
     tags_snapshot,
     flagged_questions,
+    streak_bonus,
+    speed_bonus,
+    total_time_spent,
   } = req.body;
 
   try {
@@ -214,6 +217,9 @@ router.post("/:id/attempt", async (req, res) => {
       per_question_results,
       tags_snapshot,
       flagged_questions,
+      streak_bonus,
+      speed_bonus,
+      total_time_spent,
     });
     res.json(attempt);
   } catch (error: any) {
