@@ -34,19 +34,29 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already authenticated
-    if (sessionManager.isAuthenticated()) {
-      logger.debug('Existing session found, verifying...');
-      verifySession();
-    } else {
-      logger.debug('No existing session found');
-      setLoading(false);
-    }
+    // Always try to verify/restore session on app startup
+    // This handles page refreshes where access token is lost from memory
+    logger.debug('App starting, checking for existing session...');
+    verifySession();
   }, [])
 
   const verifySession = async () => {
     try {
-      const currentUser = sessionManager.getCurrentUser();
+      let currentUser = sessionManager.getCurrentUser();
+      
+      // If no access token in memory, try to refresh using the refresh token cookie
+      if (!currentUser) {
+        logger.info('No access token in memory, attempting token refresh...');
+        try {
+          await sessionManager.refreshToken();
+          currentUser = sessionManager.getCurrentUser();
+          logger.info('Token refreshed successfully on app startup');
+        } catch (refreshError) {
+          logger.info('No valid refresh token found, user needs to login');
+          setLoading(false);
+          return;
+        }
+      }
       
       if (currentUser) {
         // Check if token is expired
