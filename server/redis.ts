@@ -4,11 +4,28 @@ import { logger } from "./logger.js";
 let redisClient: ReturnType<typeof createClient> | null = null;
 
 // Create Redis client with connection retry logic
-function createRedisClient() {
-  const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
-  const isUpstash = redisUrl.startsWith("rediss://");
+function createRedisClient(): ReturnType<typeof createClient> | null {
+  const redisUrl = process.env.REDIS_URL;
 
-  logger.info("Creating Redis client", { url: redisUrl, isUpstash });
+  // Log environment variable status for debugging
+  if (!redisUrl) {
+    logger.warn(
+      "REDIS_URL environment variable not set - Redis will be disabled"
+    );
+    logger.info(
+      "To enable Redis, set REDIS_URL in your Render environment variables"
+    );
+    logger.info(
+      "Example: redis://default:password@host:port or rediss://... for TLS"
+    );
+    // Return null to skip Redis initialization
+    return null;
+  }
+
+  const isUpstash = redisUrl.startsWith("rediss://");
+  // Mask password in logs for security
+  const maskedUrl = redisUrl.replace(/:([^@]+)@/, ":****@");
+  logger.info("Creating Redis client", { url: maskedUrl, isUpstash });
 
   const client = createClient({
     url: redisUrl,
@@ -59,13 +76,29 @@ function createRedisClient() {
 // Connect to Redis
 export async function connectRedis(): Promise<void> {
   try {
-    if (!redisClient) {
-      redisClient = createRedisClient();
+    // Check if REDIS_URL is configured
+    if (!process.env.REDIS_URL) {
+      logger.warn("Redis disabled - REDIS_URL environment variable not set");
+      logger.info("Application will run without token blacklist feature");
+      logger.info("To enable Redis:");
+      logger.info("  1. Add a Redis service (e.g., Upstash free tier)");
+      logger.info("  2. Set REDIS_URL in Render environment variables");
+      logger.info("  3. Redeploy the service");
+      return;
     }
+
+    if (!redisClient) {
+      const client = createRedisClient();
+      if (!client) {
+        logger.warn("Redis client creation skipped");
+        return;
+      }
+      redisClient = client;
+    }
+
     await redisClient.connect();
-    logger.info("Redis connection initialized", {
-      url: process.env.REDIS_URL || "redis://localhost:6379",
-    });
+    const maskedUrl = process.env.REDIS_URL.replace(/:([^@]+)@/, ":****@");
+    logger.info("Redis connection initialized", { url: maskedUrl });
   } catch (error) {
     logger.error("Failed to connect to Redis", error);
     // Continue without Redis - fallback to session-only invalidation
