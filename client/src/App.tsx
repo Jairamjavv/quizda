@@ -1,8 +1,10 @@
 import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProviderV2 as AuthProvider } from './contexts/AuthContextV2'
+import { useAuthV2 as useAuth } from './contexts/AuthContextV2'
 import ProtectedRoute from './components/ProtectedRoute'
 import { SessionExpiryModal } from './components/SessionExpiryModal'
+import { Box, CircularProgress } from '@mui/material'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -13,12 +15,28 @@ import AdminQuizzes from './pages/admin/AdminQuizzes'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminLogin from './pages/admin/AdminLogin'
 
+// Root redirect component that checks authentication
+const RootRedirect: React.FC = () => {
+  const { user, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <CircularProgress />
+      </Box>
+    )
+  }
+  
+  // Redirect to dashboard if authenticated, otherwise to login
+  return <Navigate to={user ? "/dashboard" : "/auth/login"} replace />
+}
+
 function App() {
   return (
     <AuthProvider>
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<Navigate to="/auth/login" replace />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/register" element={<Register />} />
         
