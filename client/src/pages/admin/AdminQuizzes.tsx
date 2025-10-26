@@ -51,7 +51,9 @@ import {
   Quiz,
   QuestionAnswer,
   Visibility,
-  VisibilityOff
+  VisibilityOff,
+  Upload,
+  Download
 } from '@mui/icons-material'
 import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
 import ContentPreview from '../../components/ContentPreview'
@@ -105,11 +107,14 @@ const AdminQuizzes: React.FC = () => {
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [currentQuiz, setCurrentQuiz] = useState<Quiz | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('')
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [showQuestionDialog, setShowQuestionDialog] = useState(false)
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [uploadError, setUploadError] = useState('')
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
 
   // Form states
@@ -337,6 +342,204 @@ const AdminQuizzes: React.FC = () => {
     setShowQuestionDialog(true)
   }
 
+  const downloadTemplate = () => {
+    const template = [
+      {
+        question_type: "mcq_single",
+        content_type: "text",
+        question_text: "What is 2 + 2?",
+        points: 1,
+        tags: ["math", "basic"],
+        choices: [
+          { text: "3", is_correct: false },
+          { text: "4", is_correct: true },
+          { text: "5", is_correct: false },
+          { text: "6", is_correct: false }
+        ]
+      },
+      {
+        question_type: "mcq_multiple",
+        content_type: "text",
+        question_text: "Select all prime numbers",
+        points: 2,
+        tags: ["math", "prime"],
+        choices: [
+          { text: "2", is_correct: true },
+          { text: "3", is_correct: true },
+          { text: "4", is_correct: false },
+          { text: "5", is_correct: true }
+        ]
+      },
+      {
+        question_type: "true_false",
+        content_type: "text",
+        question_text: "The Earth is flat",
+        points: 1,
+        tags: ["science"],
+        choices: [
+          { text: "True", is_correct: false },
+          { text: "False", is_correct: true }
+        ]
+      },
+      {
+        question_type: "fill_blanks",
+        content_type: "text",
+        question_text: "The capital of France is ____",
+        points: 1,
+        tags: ["geography"],
+        correct_answers: ["Paris", "paris"]
+      }
+    ]
+
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'quiz_questions_template.json'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
+  const validateQuestionJSON = (data: any[]): string | null => {
+    if (!Array.isArray(data)) {
+      return 'JSON must be an array of questions'
+    }
+
+    const validQuestionTypes = ['mcq_single', 'mcq_multiple', 'true_false', 'fill_blanks']
+    const validContentTypes = ['text']
+
+    for (let i = 0; i < data.length; i++) {
+      const q = data[i]
+      
+      // Check required fields
+      if (!q.question_type || !validQuestionTypes.includes(q.question_type)) {
+        return `Question ${i + 1}: Invalid or missing question_type. Must be one of: ${validQuestionTypes.join(', ')}`
+      }
+
+      if (!q.content_type || !validContentTypes.includes(q.content_type)) {
+        return `Question ${i + 1}: Invalid or missing content_type. Currently only 'text' is supported`
+      }
+
+      if (!q.question_text || typeof q.question_text !== 'string') {
+        return `Question ${i + 1}: Missing or invalid question_text`
+      }
+
+      if (typeof q.points !== 'number' || q.points <= 0) {
+        return `Question ${i + 1}: Points must be a positive number`
+      }
+
+      // Validate based on question type
+      if (q.question_type === 'fill_blanks') {
+        if (!q.correct_answers || !Array.isArray(q.correct_answers) || q.correct_answers.length === 0) {
+          return `Question ${i + 1}: Fill in the blanks questions must have correct_answers array`
+        }
+      } else {
+        // MCQ and True/False need choices
+        if (!q.choices || !Array.isArray(q.choices) || q.choices.length === 0) {
+          return `Question ${i + 1}: Must have choices array`
+        }
+
+        let correctCount = 0
+        for (let j = 0; j < q.choices.length; j++) {
+          const choice = q.choices[j]
+          if (!choice.text || typeof choice.text !== 'string') {
+            return `Question ${i + 1}, Choice ${j + 1}: Missing or invalid text`
+          }
+          if (typeof choice.is_correct !== 'boolean') {
+            return `Question ${i + 1}, Choice ${j + 1}: is_correct must be a boolean`
+          }
+          if (choice.is_correct) correctCount++
+        }
+
+        if (q.question_type === 'mcq_single' && correctCount !== 1) {
+          return `Question ${i + 1}: Single answer MCQ must have exactly one correct answer`
+        }
+
+        if (q.question_type === 'mcq_multiple' && correctCount < 1) {
+          return `Question ${i + 1}: Multiple answer MCQ must have at least one correct answer`
+        }
+
+        if (q.question_type === 'true_false' && (q.choices.length !== 2 || correctCount !== 1)) {
+          return `Question ${i + 1}: True/False must have exactly 2 choices with one correct`
+        }
+      }
+    }
+
+    return null
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploadError('')
+
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+
+      // Validate the JSON structure
+      const validationError = validateQuestionJSON(data)
+      if (validationError) {
+        setUploadError(validationError)
+        return
+      }
+
+      // Convert to Question format and upload to backend
+      if (!currentQuiz) {
+        setUploadError('No quiz selected')
+        return
+      }
+
+      const uploadedQuestions: Question[] = []
+      
+      for (let i = 0; i < data.length; i++) {
+        const q = data[i]
+        const questionData = {
+          quiz_id: currentQuiz._id,
+          text: q.question_text,
+          points: q.points,
+          tags: q.tags || [],
+          order: questions.length + i + 1,
+          question_type: q.question_type,
+          content_type: q.content_type,
+          correct_answers: q.correct_answers || [],
+          choices: q.question_type === 'fill_blanks' 
+            ? [] 
+            : q.choices.map((c: any, idx: number) => ({
+                id: String(idx + 1),
+                text: c.text,
+                is_correct: c.is_correct
+              }))
+        }
+
+        const response = await axios.post('/admin/questions', questionData)
+        uploadedQuestions.push(response.data)
+      }
+
+      // Update state
+      setQuestions(prev => [...prev, ...uploadedQuestions])
+      
+      // Update quiz total points
+      const addedPoints = data.reduce((sum: number, q: any) => sum + q.points, 0)
+      setQuizForm(prev => ({ ...prev, total_points: prev.total_points + addedPoints }))
+
+      setShowUploadDialog(false)
+      setError('')
+    } catch (err: any) {
+      if (err instanceof SyntaxError) {
+        setUploadError('Invalid JSON format')
+      } else {
+        setUploadError(err.response?.data?.error || err.message || 'Failed to upload questions')
+      }
+    }
+
+    // Reset the file input
+    event.target.value = ''
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
@@ -355,15 +558,6 @@ const AdminQuizzes: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {isEditing ? `Edit Quiz: ${currentQuiz?.title}` : 'Manage Quizzes'}
           </Typography>
-          {!isEditing && (
-            <Button
-              color="inherit"
-              startIcon={<Add />}
-              onClick={() => setShowCreateDialog(true)}
-            >
-              New Quiz
-            </Button>
-          )}
         </Toolbar>
       </AppBar>
 
@@ -504,13 +698,30 @@ const AdminQuizzes: React.FC = () => {
                   <Typography variant="h6">
                     Questions ({questions.length})
                   </Typography>
-                  <Button
-                    variant="contained"
-                    startIcon={<Add />}
-                    onClick={() => openQuestionDialog()}
-                  >
-                    Add Question
-                  </Button>
+                  <Box display="flex" gap={2}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<Upload />}
+                      onClick={() => setShowUploadDialog(true)}
+                      sx={{
+                        borderColor: '#FF7A00',
+                        color: '#FF7A00',
+                        '&:hover': {
+                          borderColor: '#FF7A00',
+                          backgroundColor: 'rgba(255, 122, 0, 0.1)'
+                        }
+                      }}
+                    >
+                      Upload Questions
+                    </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<Add />}
+                      onClick={() => openQuestionDialog()}
+                    >
+                      Add Question
+                    </Button>
+                  </Box>
                 </Box>
                 
                 {questions.map((question, index) => (
@@ -572,14 +783,30 @@ const AdminQuizzes: React.FC = () => {
                     <Typography variant="body2" color="textSecondary" gutterBottom>
                       Add questions to make your quiz complete
                     </Typography>
-                    <Button
-                      variant="contained"
-                      startIcon={<Add />}
-                      onClick={() => openQuestionDialog()}
-                      sx={{ mt: 2 }}
-                    >
-                      Add First Question
-                    </Button>
+                    <Box display="flex" gap={2} justifyContent="center" mt={2}>
+                      <Button
+                        variant="outlined"
+                        startIcon={<Upload />}
+                        onClick={() => setShowUploadDialog(true)}
+                        sx={{
+                          borderColor: '#FF7A00',
+                          color: '#FF7A00',
+                          '&:hover': {
+                            borderColor: '#FF7A00',
+                            backgroundColor: 'rgba(255, 122, 0, 0.1)'
+                          }
+                        }}
+                      >
+                        Upload from JSON
+                      </Button>
+                      <Button
+                        variant="contained"
+                        startIcon={<Add />}
+                        onClick={() => openQuestionDialog()}
+                      >
+                        Add First Question
+                      </Button>
+                    </Box>
                   </Box>
                 )}
               </Paper>
@@ -587,14 +814,74 @@ const AdminQuizzes: React.FC = () => {
           </Grid>
         ) : (
           // Quiz List
-          <Paper>
-            <Box p={3}>
-              <Typography variant="h6" gutterBottom>
-                All Quizzes ({quizzes.length})
-              </Typography>
+          <>
+            {/* Filter and Create Section */}
+            <Box 
+              display="flex" 
+              gap={2} 
+              mb={3} 
+              alignItems="center"
+              sx={{
+                p: 3,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            >
+              <FormControl sx={{ minWidth: 250 }}>
+                <InputLabel>Filter by Group</InputLabel>
+                <Select
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  label="Filter by Group"
+                >
+                  <MenuItem value="">
+                    <em>All Groups</em>
+                  </MenuItem>
+                  {groups.map(group => (
+                    <MenuItem key={group._id} value={group._id}>
+                      {group.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <Box sx={{ flexGrow: 1 }} />
+              
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setShowCreateDialog(true)}
+                sx={{
+                  backgroundColor: '#00B15E',
+                  color: '#FFFFFF',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  '&:hover': {
+                    backgroundColor: '#009950'
+                  }
+                }}
+              >
+                Create New Quiz
+              </Button>
             </Box>
+
+            <Paper>
+              <Box p={3}>
+                <Typography variant="h6" gutterBottom>
+                  {selectedGroupId 
+                    ? `${groups.find(g => g._id === selectedGroupId)?.name || 'Group'} Quizzes` 
+                    : `All Quizzes (${quizzes.length})`
+                  }
+                </Typography>
+              </Box>
             <List>
-              {quizzes.map(quiz => (
+              {quizzes
+                .filter(quiz => !selectedGroupId || quiz.group_id === selectedGroupId)
+                .map(quiz => {
+                  const quizGroup = quiz.group_id ? groups.find(g => g._id === quiz.group_id) : null
+                  return (
                 <ListItem key={quiz._id} divider>
                   <ListItemText
                     primary={quiz.title}
@@ -604,6 +891,17 @@ const AdminQuizzes: React.FC = () => {
                           {quiz.description}
                         </Typography>
                         <Box display="flex" gap={1} mt={1}>
+                          {quizGroup && (
+                            <Chip
+                              label={quizGroup.name}
+                              size="small"
+                              sx={{
+                                backgroundColor: '#00B15E',
+                                color: '#FFFFFF',
+                                fontWeight: 600
+                              }}
+                            />
+                          )}
                           <Chip
                             label={quiz.is_published ? 'Published' : 'Draft'}
                             color={quiz.is_published ? 'success' : 'warning'}
@@ -639,17 +937,18 @@ const AdminQuizzes: React.FC = () => {
                     </Box>
                   </ListItemSecondaryAction>
                 </ListItem>
-              ))}
-              {quizzes.length === 0 && (
+              )})}
+              {quizzes.filter(quiz => !selectedGroupId || quiz.group_id === selectedGroupId).length === 0 && (
                 <ListItem>
                   <ListItemText
-                    primary="No quizzes yet"
-                    secondary="Create your first quiz to get started"
+                    primary={selectedGroupId ? "No quizzes in this group" : "No quizzes yet"}
+                    secondary={selectedGroupId ? "Try selecting a different group or create a new quiz" : "Create your first quiz to get started"}
                   />
                 </ListItem>
               )}
             </List>
           </Paper>
+          </>
         )}
 
         {/* Create Quiz Dialog */}
@@ -880,6 +1179,102 @@ const AdminQuizzes: React.FC = () => {
               variant="contained"
             >
               {editingQuestion ? 'Update' : 'Add'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Upload Questions Dialog */}
+        <Dialog 
+          open={showUploadDialog} 
+          onClose={() => {
+            setShowUploadDialog(false)
+            setUploadError('')
+          }} 
+          maxWidth="sm" 
+          fullWidth
+        >
+          <DialogTitle>Upload Questions from JSON</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="textSecondary" gutterBottom sx={{ mb: 3 }}>
+              Upload multiple questions at once using a JSON file. Download the template to see the required format.
+            </Typography>
+
+            {uploadError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {uploadError}
+              </Alert>
+            )}
+
+            <Box display="flex" flexDirection="column" gap={2}>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={downloadTemplate}
+                fullWidth
+                sx={{
+                  borderColor: '#00B15E',
+                  color: '#00B15E',
+                  '&:hover': {
+                    borderColor: '#00B15E',
+                    backgroundColor: 'rgba(0, 177, 94, 0.1)'
+                  }
+                }}
+              >
+                Download JSON Template
+              </Button>
+
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<Upload />}
+                fullWidth
+                sx={{
+                  backgroundColor: '#FF7A00',
+                  color: '#FFFFFF',
+                  '&:hover': {
+                    backgroundColor: '#e66d00'
+                  }
+                }}
+              >
+                Upload JSON File
+                <input
+                  type="file"
+                  accept=".json"
+                  hidden
+                  onChange={handleFileUpload}
+                />
+              </Button>
+            </Box>
+
+            <Box mt={3} p={2} sx={{ backgroundColor: '#f5f5f5', borderRadius: 1 }}>
+              <Typography variant="subtitle2" gutterBottom fontWeight={600}>
+                Supported Question Types:
+              </Typography>
+              <Typography variant="body2" component="div">
+                • MCQ (Single Answer): <code>mcq_single</code>
+                <br />
+                • MCQ (Multiple Answers): <code>mcq_multiple</code>
+                <br />
+                • True/False: <code>true_false</code>
+                <br />
+                • Fill in the Blanks: <code>fill_blanks</code>
+              </Typography>
+              <Typography variant="subtitle2" gutterBottom fontWeight={600} sx={{ mt: 2 }}>
+                Content Format:
+              </Typography>
+              <Typography variant="body2">
+                • Currently only plain text (<code>text</code>) is supported
+              </Typography>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button 
+              onClick={() => {
+                setShowUploadDialog(false)
+                setUploadError('')
+              }}
+            >
+              Close
             </Button>
           </DialogActions>
         </Dialog>

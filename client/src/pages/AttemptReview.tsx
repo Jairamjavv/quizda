@@ -80,15 +80,44 @@ const AttemptReview: React.FC = () => {
   const fetchAttemptDetails = async () => {
     try {
       setLoading(true)
+      console.log('Fetching attempt details for ID:', attemptId)
+      
       // Fetch attempt details
       const attemptResponse = await axios.get(`/dashboard/attempts/${attemptId}`)
       const attemptData = attemptResponse.data
-      setAttempt(attemptData)
+      console.log('Received attempt data:', attemptData)
+      
+      // Add default values for backward compatibility with old attempts
+      // Ensure all numeric fields are properly converted to numbers
+      const normalizedAttempt = {
+        ...attemptData,
+        score: Number(attemptData.score) || 0,
+        max_points: Number(attemptData.max_points) || 0,
+        streak_bonus: Number(attemptData.streak_bonus) || 0,
+        speed_bonus: Number(attemptData.speed_bonus) || 0,
+        total_time_spent: Number(attemptData.total_time_spent) || 0,
+        per_question_results: (attemptData.per_question_results || []).map((result: any) => ({
+          questionId: result.questionId || result.question_id,
+          chosenChoiceId: result.chosenChoiceId || result.chosen_choice_id || '',
+          correct: result.correct || false,
+          pointsAwarded: Number(result.pointsAwarded || result.points_awarded) || 0,
+          timeSpent: Number(result.timeSpent || result.time_spent) || 0,
+          streakBonus: Number(result.streakBonus || result.streak_bonus) || 0,
+          speedBonus: Number(result.speedBonus || result.speed_bonus) || 0,
+          difficultyLevel: result.difficultyLevel || result.difficulty_level || ''
+        }))
+      }
+      
+      console.log('Normalized attempt:', normalizedAttempt)
+      setAttempt(normalizedAttempt)
 
       // Fetch quiz questions
+      console.log('Fetching questions for quiz:', attemptData.quiz_id)
       const questionsResponse = await axios.get(`/quizzes/${attemptData.quiz_id}/questions`)
+      console.log('Received questions:', questionsResponse.data)
       setQuestions(questionsResponse.data)
     } catch (err: any) {
+      console.error('Error fetching attempt details:', err)
       setError(err.response?.data?.error || 'Failed to load attempt details')
     } finally {
       setLoading(false)
@@ -143,6 +172,21 @@ const AttemptReview: React.FC = () => {
           </Button>
         }>
           {error || 'Attempt not found'}
+        </Alert>
+      </Container>
+    )
+  }
+
+  // Safety check for data
+  if (!attempt.per_question_results || attempt.per_question_results.length === 0) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="warning" action={
+          <Button color="inherit" onClick={() => navigate('/quiz/history')}>
+            Back to History
+          </Button>
+        }>
+          No question results found for this attempt. This might be an old attempt from before the enhanced scoring system.
         </Alert>
       </Container>
     )

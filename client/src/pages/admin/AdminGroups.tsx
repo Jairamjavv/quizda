@@ -183,15 +183,6 @@ const AdminGroups: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {isEditing ? `Edit Group: ${currentGroup?.name}` : 'Manage Groups'}
           </Typography>
-          {!isEditing && (
-            <Button
-              color="inherit"
-              startIcon={<Add />}
-              onClick={() => setShowCreateDialog(true)}
-            >
-              New Group
-            </Button>
-          )}
         </Toolbar>
       </AppBar>
 
@@ -344,12 +335,44 @@ const AdminGroups: React.FC = () => {
           </Grid>
         ) : (
           // Groups List
-          <Paper>
-            <Box p={3}>
-              <Typography variant="h6" gutterBottom>
-                All Groups ({groups.length})
-              </Typography>
+          <>
+            {/* Create Group Button */}
+            <Box 
+              display="flex" 
+              justifyContent="flex-end"
+              mb={3}
+              sx={{
+                p: 3,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+              }}
+            >
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setShowCreateDialog(true)}
+                sx={{
+                  backgroundColor: '#00B15E',
+                  color: '#FFFFFF',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  '&:hover': {
+                    backgroundColor: '#009950'
+                  }
+                }}
+              >
+                Create New Group
+              </Button>
             </Box>
+
+            <Paper>
+              <Box p={3}>
+                <Typography variant="h6" gutterBottom>
+                  All Groups ({groups.length})
+                </Typography>
+              </Box>
             <List>
               {groups.map(group => (
                 <ListItem key={group._id} divider>
@@ -404,6 +427,7 @@ const AdminGroups: React.FC = () => {
               )}
             </List>
           </Paper>
+          </>
         )}
 
         {/* Create Group Dialog */}

@@ -425,6 +425,199 @@ module.exports = {
 }
 ```
 
+## Bento Box Layout Pattern
+
+### Overview
+
+The bento box layout uses CSS Grid to create a responsive, card-based dashboard with varied sizing.
+
+### Grid Configuration
+
+```css
+/* 12-column grid system */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px; /* 3 spacing unit */
+  grid-auto-rows: minmax(120px, auto);
+}
+
+/* Card spans */
+.card-small {
+  grid-column: span 3; /* 3 columns - fits 4 per row */
+}
+.card-medium {
+  grid-column: span 6; /* 6 columns - fits 2 per row */
+}
+.card-large {
+  grid-column: span 8; /* 8 columns */
+}
+
+/* Responsive breakpoints */
+@media (max-width: 900px) {
+  .card-small {
+    grid-column: span 6; /* 2 per row on tablet */
+  }
+}
+@media (max-width: 600px) {
+  .card-small,
+  .card-medium,
+  .card-large {
+    grid-column: span 12; /* Stack on mobile */
+  }
+}
+```
+
+### Color Alternation Pattern
+
+**For stat cards (4 boxes per row):**
+
+Follow alternating green/orange pattern for visual rhythm:
+
+1. **Card 1**: Green (#00B15E) - First metric
+2. **Card 2**: Orange (#FF7A00) - Second metric
+3. **Card 3**: Green (#00B15E) - Third metric
+4. **Card 4**: Orange (#FF7A00) - Fourth metric
+
+**Example Layout:**
+
+```
+┌─────────────┬─────────────┬─────────────┬─────────────┐
+│   Green     │   Orange    │   Green     │   Orange    │
+│  Metric 1   │  Metric 2   │  Metric 3   │  Metric 4   │
+└─────────────┴─────────────┴─────────────┴─────────────┘
+```
+
+**Color Assignment Rules:**
+
+- **Green boxes**: Success metrics, totals, positive indicators
+  - Total counts (quizzes, users, attempts)
+  - Success rates, completion metrics
+  - Performance scores, averages
+- **Orange boxes**: Warning/highlight metrics, time-sensitive items
+  - Pending items, drafts, incomplete
+  - Time-based metrics (streaks, deadlines)
+  - Alert counters, review items
+
+**Implementation:**
+
+```tsx
+// User Dashboard Example
+<Card
+  sx={{
+    gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" },
+    bgcolor: "#00B15E", // Green for positive metric
+    color: "white",
+  }}
+>
+  <Typography variant="h3">{totalQuizzes}</Typography>
+  <Typography>Total Quizzes</Typography>
+</Card>;
+
+<Card
+  sx={{
+    gridColumn: { xs: "span 12", sm: "span 6", md: "span 3" },
+    bgcolor: "#FF7A00", // Orange for time/streak metric
+    color: "white",
+  }}
+>
+  <Typography variant="h3">{streak}</Typography>
+  <Typography>Day Streak 🔥</Typography>
+</Card>;
+```
+
+### Layout Combinations
+
+**Dashboard Pattern (4 stats + 2 content cards):**
+
+```
+Row 1: [Green-3] [Orange-3] [Green-3] [Orange-3]
+Row 2: [Content-6] [Content-6]
+```
+
+**Admin Pattern (4 stats + 1 actions + 2 lists):**
+
+```
+Row 1: [Green-3] [Green-3] [Orange-3] [Green-3]
+Row 2: [Actions-6] [List-6]
+Row 3: [List-6] [List-6]
+```
+
+### Card Hover Effects
+
+```css
+/* Consistent hover for all cards */
+.card {
+  transition: all 0.2s ease;
+  border: 1px solid #e0e0e0;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Green accent on hover */
+.card-white:hover {
+  border-color: #00b15e;
+}
+
+/* Maintain color for colored cards */
+.card-green:hover {
+  box-shadow: 0 4px 16px rgba(0, 177, 94, 0.4);
+}
+
+.card-orange:hover {
+  box-shadow: 0 4px 16px rgba(255, 122, 0, 0.4);
+}
+```
+
+### Icon Boxes in Colored Cards
+
+For colored cards (green/orange), use semi-transparent white icon boxes:
+
+```tsx
+<Box
+  sx={{
+    width: 56,
+    height: 56,
+    borderRadius: 3,
+    bgcolor: "rgba(255, 255, 255, 0.2)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    mb: 2,
+  }}
+>
+  <Icon sx={{ fontSize: 28, color: "#fff" }} />
+</Box>
+```
+
+For white cards, use colored semi-transparent backgrounds:
+
+```tsx
+// Green icon box
+<Box sx={{ bgcolor: "rgba(0, 177, 94, 0.15)" }}>
+  <Icon sx={{ color: "#00B15E" }} />
+</Box>
+
+// Orange icon box
+<Box sx={{ bgcolor: "rgba(255, 122, 0, 0.15)" }}>
+  <Icon sx={{ color: "#FF7A00" }} />
+</Box>
+```
+
+### Best Practices
+
+1. **Maximum 4 stat cards per row** on desktop
+2. **Alternate colors** (green/orange) for visual variety
+3. **Use white cards** for content-heavy sections (lists, tables)
+4. **Consistent spacing**: 24px gap between cards
+5. **Responsive behavior**: Stack on mobile, 2-col on tablet, 4-col on desktop
+6. **Hover states**: Subtle lift effect with enhanced shadow
+7. **Icon consistency**: 56x56px icon boxes with 28px icons
+8. **Typography hierarchy**: h3 for numbers, body2 for labels
+
 ---
 
 # 5. Question Types

@@ -23,14 +23,58 @@ logger.info("Starting Quizda API server...", {
   port: process.env.PORT || 4000,
 });
 
-// CORS configuration for production
+// CORS configuration - dynamic origin based on environment
+// In production: only allow CLIENT_URL from env
+// In development: allow CLIENT_URL + any localhost origin (dynamic port)
+const allowedOrigins: string[] = [];
+
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(process.env.CLIENT_URL);
+}
+
+// Fallback if no CLIENT_URL is set (should not happen in production)
+if (allowedOrigins.length === 0) {
+  allowedOrigins.push("http://localhost:5173");
+}
+
 const corsOptions = {
-  origin: process.env.CLIENT_URL || "http://localhost:5173",
+  origin: (
+    origin: string | undefined,
+    callback: (err: Error | null, allow?: boolean) => void
+  ) => {
+    // Allow requests with no origin (like curl, mobile apps, server-to-server)
+    if (!origin) return callback(null, true);
+
+    // In development, allow any localhost origin (any port)
+    const isLocalhost =
+      origin.startsWith("http://localhost:") ||
+      origin.startsWith("http://127.0.0.1:");
+
+    if (
+      allowedOrigins.includes(origin) ||
+      (process.env.NODE_ENV !== "production" && isLocalhost)
+    ) {
+      callback(null, true);
+    } else {
+      logger.warn("CORS blocked request from origin", {
+        origin,
+        allowedOrigins,
+      });
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
 
-logger.info("CORS configured", { allowedOrigin: corsOptions.origin });
+logger.info("CORS configured", {
+  environment: process.env.NODE_ENV || "development",
+  allowedOrigins,
+  developmentMode:
+    process.env.NODE_ENV !== "production"
+      ? "allowing all localhost origins"
+      : "production only",
+});
 
 app.use(cors(corsOptions));
 app.use(json());
