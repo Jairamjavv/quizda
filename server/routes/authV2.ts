@@ -84,7 +84,7 @@ router.post("/register", rateLimitLogin, async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -166,7 +166,7 @@ router.post("/login", rateLimitLogin, async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: rememberMe ? 30 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -259,7 +259,7 @@ router.post("/refresh", async (req, res) => {
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -311,8 +311,12 @@ router.post("/logout", authenticateSession, async (req, res) => {
       logger.info("User logged out", { userId });
     }
 
-    // Clear cookie
-    res.clearCookie("refreshToken");
+    // Clear cookie (must match the options used when setting)
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
     res.json({ message: "Logged out successfully" });
   } catch (error) {
     logger.error("Logout error", error);
@@ -351,8 +355,12 @@ router.post("/logout-all", authenticateSession, async (req, res) => {
       invalidatedSessions,
     });
 
-    // Clear cookie
-    res.clearCookie("refreshToken");
+    // Clear cookie (must match the options used when setting)
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    });
     res.json({
       message: "Logged out from all devices",
       revokedSessions: invalidatedSessions,
