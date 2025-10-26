@@ -30,3 +30,6 @@ coverage
 # Render
 .render
 
+# Test data files (for local testing only)
+test_questions_*.json
+

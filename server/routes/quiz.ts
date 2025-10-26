@@ -5,6 +5,7 @@ import Attempt from "../models/attempt.js";
 import Group from "../models/group.js";
 import FlaggedQuestion from "../models/flaggedQuestion.js";
 import { authenticateSession } from "../middleware/sessionAuth.js";
+import { logger } from "../logger.js";
 
 const router = express.Router();
 
@@ -223,13 +224,16 @@ router.post("/:id/attempt", async (req, res) => {
     });
     res.json(attempt);
   } catch (error: any) {
-    console.error("Error creating attempt:", error);
-    console.error("Error stack:", error.stack);
-    console.error("Request body:", JSON.stringify(req.body, null, 2));
+    // Log error securely without exposing sensitive data
+    logger.error("Failed to create attempt", error, {
+      userId: req.authenticatedUser?.id,
+      quizId: req.body?.quiz_id,
+    });
+
+    // Generic error response in production
     res.status(500).json({
       error: "Failed to create attempt",
-      details: error.message,
-      code: error.code,
+      ...(process.env.NODE_ENV === "development" && { details: error.message }),
     });
   }
 });

@@ -224,7 +224,10 @@ router.get("/", async (req, res) => {
         })),
     });
   } catch (error) {
-    console.error("Dashboard error:", error);
+    logger.error("Failed to load dashboard data", error as Error, {
+      userId: req.authenticatedUser?.id,
+      groupId: req.query.groupId as string | undefined,
+    });
     res.status(500).json({ error: "Failed to load dashboard data" });
   }
 });
@@ -280,7 +283,9 @@ router.get("/attempts", async (req, res) => {
     const attempts = await Attempt.getByUser(userId);
     res.json(attempts);
   } catch (error) {
-    console.error("Attempts error:", error);
+    logger.error("Failed to load attempts", error as Error, {
+      userId,
+    });
     res.status(500).json({ error: "Failed to load attempts" });
   }
 });
