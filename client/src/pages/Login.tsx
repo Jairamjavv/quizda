@@ -10,7 +10,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material'
-import { useAuth } from '../contexts/AuthContext'
+import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('')
