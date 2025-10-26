@@ -99,7 +99,10 @@ const Dashboard: React.FC = () => {
       const response = await axios.get('/dashboard/groups')
       setGroups(response.data)
     } catch (err: any) {
-      console.error('Failed to load groups:', err)
+      // Only log in development mode - groups are not critical
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Failed to load groups:', err)
+      }
     }
   }
 

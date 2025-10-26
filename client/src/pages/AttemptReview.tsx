@@ -80,12 +80,10 @@ const AttemptReview: React.FC = () => {
   const fetchAttemptDetails = async () => {
     try {
       setLoading(true)
-      console.log('Fetching attempt details for ID:', attemptId)
       
       // Fetch attempt details
       const attemptResponse = await axios.get(`/dashboard/attempts/${attemptId}`)
       const attemptData = attemptResponse.data
-      console.log('Received attempt data:', attemptData)
       
       // Add default values for backward compatibility with old attempts
       // Ensure all numeric fields are properly converted to numbers
@@ -108,17 +106,19 @@ const AttemptReview: React.FC = () => {
         }))
       }
       
-      console.log('Normalized attempt:', normalizedAttempt)
       setAttempt(normalizedAttempt)
 
       // Fetch quiz questions
-      console.log('Fetching questions for quiz:', attemptData.quiz_id)
       const questionsResponse = await axios.get(`/quizzes/${attemptData.quiz_id}/questions`)
-      console.log('Received questions:', questionsResponse.data)
       setQuestions(questionsResponse.data)
     } catch (err: any) {
-      console.error('Error fetching attempt details:', err)
-      setError(err.response?.data?.error || 'Failed to load attempt details')
+      // Only log in development mode
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Error fetching attempt details:', err)
+      }
+      
+      // Generic user-facing error message
+      setError('Failed to load attempt details. Please try again later.')
     } finally {
       setLoading(false)
     }
