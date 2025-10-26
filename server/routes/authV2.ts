@@ -233,6 +233,40 @@ router.post("/refresh", async (req, res) => {
     const activeSessions = await SessionModel.getActiveSessions(user.id);
     const activeSession = activeSessions.find((s: any) => s.is_active);
 
+    // IDLE TIMEOUT VALIDATION: Check if session has been idle for >30 minutes
+    if (activeSession) {
+      const now = new Date();
+      const lastActivity = new Date(activeSession.last_activity);
+      const idleTimeMs = now.getTime() - lastActivity.getTime();
+      const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+      if (idleTimeMs > IDLE_TIMEOUT_MS) {
+        logger.warn("Session idle timeout exceeded", {
+          userId: user.id,
+          sessionId: activeSession.id,
+          idleTimeMinutes: Math.floor(idleTimeMs / 60000),
+        });
+
+        // Invalidate the idle session
+        await SessionModel.invalidate(activeSession.session_token);
+        await RefreshTokenModel.revoke(refreshToken);
+
+        return res.status(401).json({
+          error: "Session expired due to inactivity",
+          code: "IDLE_TIMEOUT",
+          message:
+            "Your session has expired after 30 minutes of inactivity. Please log in again.",
+        });
+      }
+
+      // Update session activity timestamp
+      await SessionModel.updateActivity(activeSession.session_token);
+      logger.debug("Session activity updated", {
+        userId: user.id,
+        sessionId: activeSession.id,
+      });
+    }
+
     // Generate new CSRF token for the session
     const newCsrfToken = activeSession ? generateCsrfToken() : undefined;
 

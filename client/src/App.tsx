@@ -2,6 +2,7 @@ import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProviderV2 as AuthProvider } from './contexts/AuthContextV2'
 import ProtectedRoute from './components/ProtectedRoute'
+import { SessionExpiryModal } from './components/SessionExpiryModal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -40,6 +41,9 @@ function App() {
           <Route path="history" element={<QuizHistory />} />
         </Route>
       </Routes>
+      
+      {/* Global session expiry warning modal */}
+      <SessionExpiryModal />
     </AuthProvider>
   )
 }
