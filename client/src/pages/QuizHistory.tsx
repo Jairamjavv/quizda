@@ -20,7 +20,8 @@ import {
   IconButton,
   Card,
   CardContent,
-  Grid
+  Grid,
+  Tooltip
 } from '@mui/material'
 import {
   ArrowBack,
@@ -149,6 +150,19 @@ const QuizHistory: React.FC = () => {
           </Paper>
         ) : (
           <>
+            {/* Info Alert */}
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                💡 Click on any completed quiz row or use the "View Details" button to see:
+              </Typography>
+              <Typography variant="caption" component="div" sx={{ mt: 1, ml: 2 }}>
+                • Your answers vs. correct answers<br/>
+                • Time spent on each question<br/>
+                • Points breakdown with streak & speed bonuses<br/>
+                • Overall performance summary
+              </Typography>
+            </Alert>
+
             {/* Summary Cards */}
             <Grid container spacing={3} mb={4}>
               <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -248,7 +262,21 @@ const QuizHistory: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {attempts.map((attempt) => (
-                      <TableRow key={attempt.id}>
+                      <TableRow 
+                        key={attempt.id}
+                        hover
+                        sx={{ 
+                          cursor: attempt.completed_at ? 'pointer' : 'default',
+                          '&:hover': attempt.completed_at ? {
+                            backgroundColor: 'action.hover'
+                          } : {}
+                        }}
+                        onClick={() => {
+                          if (attempt.completed_at) {
+                            navigate(`/quiz/attempt/${attempt.id}`)
+                          }
+                        }}
+                      >
                         <TableCell>
                           <Typography variant="body2">
                             Quiz #{attempt.quiz_id.slice(-6)}
@@ -301,15 +329,25 @@ const QuizHistory: React.FC = () => {
                           />
                         </TableCell>
                         <TableCell>
-                          {attempt.completed_at && (
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<Visibility />}
-                              onClick={() => navigate(`/quiz/attempt/${attempt.id}`)}
-                            >
-                              View Details
-                            </Button>
+                          {attempt.completed_at ? (
+                            <Tooltip title="Click to view detailed breakdown">
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<Visibility />}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/quiz/attempt/${attempt.id}`)
+                                }}
+                                sx={{ whiteSpace: 'nowrap' }}
+                              >
+                                View Details
+                              </Button>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="caption" color="text.secondary">
+                              Not available
+                            </Typography>
                           )}
                         </TableCell>
                       </TableRow>
