@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import axios from 'axios'
 import { logger } from '../utils/logger'
 import { sessionManager } from '../utils/sessionManager'
+import { activityTracker } from '../utils/activityTracker'
 
 interface User {
   id: number
@@ -38,7 +39,26 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
     // This handles page refreshes where access token is lost from memory
     logger.debug('App starting, checking for existing session...');
     verifySession();
+
+    // Setup activity tracker listeners
+    const unsubscribeIdleTimeout = activityTracker.on('idle-timeout', handleIdleTimeout);
+    const unsubscribeIdleWarning = activityTracker.on('idle-warning', handleIdleWarning);
+
+    return () => {
+      unsubscribeIdleTimeout();
+      unsubscribeIdleWarning();
+    };
   }, [])
+
+  const handleIdleTimeout = async () => {
+    logger.warn('Idle timeout detected, logging out user');
+    await logout();
+  };
+
+  const handleIdleWarning = () => {
+    logger.info('Idle warning threshold reached');
+    // This will be handled by SessionExpiryModal component
+  };
 
   const verifySession = async () => {
     try {
@@ -71,6 +91,9 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
                 email: refreshedUser.email,
                 role: refreshedUser.role as 'user' | 'admin'
               });
+              // Start activity tracking after successful session restoration
+              activityTracker.start();
+              logger.info('Session restored, activity tracker started');
             }
           } catch (refreshError) {
             logger.warn('Token refresh failed, keeping existing session');
@@ -82,6 +105,9 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
             email: currentUser.email,
             role: currentUser.role as 'user' | 'admin'
           });
+          // Start activity tracking for existing valid session
+          activityTracker.start();
+          logger.info('Existing session found, activity tracker started');
         }
         
         logger.info('Session verified', { userId: currentUser.id, role: currentUser.role });
@@ -114,6 +140,10 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
       
       // Set tokens in session manager
       sessionManager.setTokens(accessToken, csrfToken);
+      
+      // Start activity tracking
+      activityTracker.start();
+      logger.info('Activity tracker started after login');
       
       // Set user state
       const userObj: User = {
@@ -180,8 +210,17 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
       logger.error('Logout request failed', error);
       // Continue with local logout even if server request fails
     } finally {
+      // Broadcast logout to other tabs
+      activityTracker.broadcastLogout();
+      
+      // Stop activity tracking
+      activityTracker.stop();
+      
+      // Clear session data
       sessionManager.clearSession();
       setUser(null);
+      
+      logger.info('Session cleared and activity tracker stopped');
     }
   }
 

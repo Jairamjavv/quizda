@@ -1,6 +1,7 @@
 import axios, { AxiosError } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 import { logger } from "./logger";
+import { activityTracker } from "./activityTracker";
 
 interface TokenResponse {
   accessToken: string;
@@ -48,9 +49,12 @@ class SessionManager {
    * Setup axios interceptors for automatic token refresh
    */
   private setupInterceptors() {
-    // Request interceptor: Add tokens to requests
+    // Request interceptor: Add tokens to requests and record activity
     axios.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
+        // Record activity on every API call
+        activityTracker.recordActivity();
+
         // Add access token
         if (this.accessToken && config.headers) {
           config.headers["Authorization"] = `Bearer ${this.accessToken}`;
@@ -141,6 +145,21 @@ class SessionManager {
         ) {
           logger.warn("Session expired");
           this.clearSession();
+          window.location.href = "/auth/login";
+        }
+
+        // Handle idle timeout (30 minutes of inactivity)
+        if (
+          error.response?.status === 401 &&
+          error.response?.data?.code === "IDLE_TIMEOUT"
+        ) {
+          logger.warn("Session expired due to inactivity");
+          this.clearSession();
+          // Show user-friendly message
+          const message =
+            error.response?.data?.message ||
+            "Your session has expired due to inactivity.";
+          alert(message);
           window.location.href = "/auth/login";
         }
 

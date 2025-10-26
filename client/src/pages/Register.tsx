@@ -8,7 +8,9 @@ import {
   Typography,
   Box,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material'
 import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 
@@ -16,6 +18,7 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
@@ -38,7 +41,7 @@ const Register: React.FC = () => {
     setLoading(true)
 
     try {
-      await register(email, password)
+      await register(email, password, rememberMe)
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message)
@@ -140,6 +143,31 @@ const Register: React.FC = () => {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              sx={{ mb: 2 }}
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  sx={{
+                    color: '#FF7A00',
+                    '&.Mui-checked': {
+                      color: '#FF7A00',
+                    },
+                  }}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#121212' }}>
+                    Remember me for 30 days
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#666666' }}>
+                    Keep me signed in on this device
+                  </Typography>
+                </Box>
+              }
               sx={{ mb: 3 }}
             />
             <Button
