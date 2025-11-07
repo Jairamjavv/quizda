@@ -13,6 +13,7 @@ import {
   Checkbox
 } from '@mui/material'
 import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
+import { designSystem } from '../theme/designSystem'
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -45,17 +46,32 @@ const Login: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #F9F9F9 0%, #E8E8E8 100%)',
-        padding: 2,
+        background: designSystem.colors.darkBg,
+        padding: { xs: 2, sm: 3 },
+        '@keyframes fadeIn': {
+          from: { opacity: 0 },
+          to: { opacity: 1 },
+        },
+        animation: 'fadeIn 400ms ease-in',
       }}
     >
       <Container component="main" maxWidth="sm">
         <Paper 
           elevation={3} 
           sx={{ 
-            padding: { xs: 4, sm: 6 },
-            borderRadius: 4,
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+            padding: { xs: 3, sm: 6 },
+            borderRadius: designSystem.borderRadius.bento,
+            boxShadow: designSystem.shadows.bento,
+            bgcolor: designSystem.colors.lightSurface,
+            transition: designSystem.animations.transition.default,
+            '@keyframes slideUp': {
+              from: { transform: 'translateY(30px)', opacity: 0 },
+              to: { transform: 'translateY(0)', opacity: 1 },
+            },
+            animation: 'slideUp 500ms ease-out',
+            '&:hover': {
+              boxShadow: designSystem.shadows.hover,
+            },
           }}
         >
           <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -64,8 +80,10 @@ const Login: React.FC = () => {
               variant="h3" 
               sx={{ 
                 fontWeight: 700,
-                color: '#121212',
+                color: designSystem.colors.textDark,
                 mb: 1,
+                fontFamily: designSystem.typography.fontFamily.display,
+                fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
               }}
             >
               Quizda
@@ -73,8 +91,9 @@ const Login: React.FC = () => {
             <Typography 
               variant="h5" 
               sx={{ 
-                color: '#666666',
+                color: 'rgba(26, 26, 26, 0.6)',
                 fontWeight: 500,
+                fontSize: { xs: '1.25rem', sm: '1.5rem' },
               }}
             >
               Sign In
@@ -86,7 +105,17 @@ const Login: React.FC = () => {
               severity="error" 
               sx={{ 
                 mb: 3,
-                borderRadius: 2,
+                borderRadius: designSystem.borderRadius.md,
+                bgcolor: `${designSystem.colors.brandPrimary}15`,
+                color: designSystem.colors.brandPrimary,
+                border: `1px solid ${designSystem.colors.brandPrimary}`,
+                transition: designSystem.animations.transition.default,
+                '@keyframes shake': {
+                  '0%, 100%': { transform: 'translateX(0)' },
+                  '25%': { transform: 'translateX(-10px)' },
+                  '75%': { transform: 'translateX(10px)' },
+                },
+                animation: 'shake 400ms ease-in-out',
               }}
             >
               {error}
@@ -105,7 +134,29 @@ const Login: React.FC = () => {
               autoFocus
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  color: designSystem.colors.textDark,
+                  transition: designSystem.animations.transition.default,
+                  '& fieldset': { 
+                    borderColor: 'rgba(26, 26, 26, 0.2)',
+                    transition: designSystem.animations.transition.default,
+                  },
+                  '&:hover fieldset': { 
+                    borderColor: designSystem.colors.accentBlue,
+                    transform: 'scale(1.01)',
+                  },
+                  '&.Mui-focused fieldset': { 
+                    borderColor: designSystem.colors.brandPrimary,
+                    boxShadow: `0 0 0 3px ${designSystem.colors.brandPrimary}15`,
+                  },
+                },
+                '& .MuiInputLabel-root': { 
+                  color: 'rgba(26, 26, 26, 0.6)',
+                  transition: designSystem.animations.transition.default,
+                },
+              }}
             />
             <TextField
               margin="normal"
@@ -118,7 +169,29 @@ const Login: React.FC = () => {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  color: designSystem.colors.textDark,
+                  transition: designSystem.animations.transition.default,
+                  '& fieldset': { 
+                    borderColor: 'rgba(26, 26, 26, 0.2)',
+                    transition: designSystem.animations.transition.default,
+                  },
+                  '&:hover fieldset': { 
+                    borderColor: designSystem.colors.accentBlue,
+                    transform: 'scale(1.01)',
+                  },
+                  '&.Mui-focused fieldset': { 
+                    borderColor: designSystem.colors.brandPrimary,
+                    boxShadow: `0 0 0 3px ${designSystem.colors.brandPrimary}15`,
+                  },
+                },
+                '& .MuiInputLabel-root': { 
+                  color: 'rgba(26, 26, 26, 0.6)',
+                  transition: designSystem.animations.transition.default,
+                },
+              }}
             />
             <FormControlLabel
               control={
@@ -126,19 +199,21 @@ const Login: React.FC = () => {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   sx={{
-                    color: '#FF7A00',
+                    color: 'rgba(26, 26, 26, 0.4)',
+                    transition: designSystem.animations.transition.default,
                     '&.Mui-checked': {
-                      color: '#FF7A00',
+                      color: designSystem.colors.brandPrimary,
+                      transform: 'scale(1.1)',
                     },
                   }}
                 />
               }
               label={
                 <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 500, color: '#121212' }}>
+                  <Typography variant="body2" sx={{ fontWeight: 500, color: designSystem.colors.textDark }}>
                     Remember me for 30 days
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#666666' }}>
+                  <Typography variant="caption" sx={{ color: 'rgba(26, 26, 26, 0.6)' }}>
                     Keep me signed in on this device
                   </Typography>
                 </Box>
@@ -154,19 +229,33 @@ const Login: React.FC = () => {
                 py: 2,
                 fontSize: '1.1rem',
                 mb: 2,
+                bgcolor: designSystem.colors.brandPrimary,
+                color: designSystem.colors.textLight,
+                borderRadius: designSystem.borderRadius.sm,
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: designSystem.shadows.subtle,
+                '&:hover': {
+                  bgcolor: designSystem.colors.brandHover,
+                  boxShadow: designSystem.shadows.bento,
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(245, 72, 72, 0.5)',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                },
               }}
             >
-              {loading ? <CircularProgress size={24} sx={{ color: '#FFFFFF' }} /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} sx={{ color: designSystem.colors.textLight }} /> : 'Sign In'}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Link to="/auth/register" style={{ textDecoration: 'none' }}>
                 <Typography 
                   variant="body1" 
                   sx={{ 
-                    color: '#FF7A00',
+                    color: designSystem.colors.brandPrimary,
                     fontWeight: 500,
                     '&:hover': {
-                      color: '#E66D00',
+                      color: designSystem.colors.brandHover,
                       textDecoration: 'underline',
                     },
                   }}
@@ -180,9 +269,9 @@ const Login: React.FC = () => {
                 <Typography 
                   variant="body2" 
                   sx={{ 
-                    color: '#666666',
+                    color: 'rgba(26, 26, 26, 0.6)',
                     '&:hover': {
-                      color: '#121212',
+                      color: designSystem.colors.textDark,
                     },
                   }}
                 >

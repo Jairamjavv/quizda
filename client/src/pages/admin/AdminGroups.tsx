@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material'
 import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
 import axios from 'axios'
+import { designSystem } from '../../theme/designSystem'
 
 interface Group {
   _id: string
@@ -167,20 +168,36 @@ const AdminGroups: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: designSystem.colors.darkBg }}>
+        <CircularProgress sx={{ color: designSystem.colors.brandPrimary }} />
       </Box>
     )
   }
 
   return (
-    <Box>
-      <AppBar position="static">
+    <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh' }}>
+      <AppBar position="static" sx={{ bgcolor: designSystem.colors.darkBg, boxShadow: 'none', borderBottom: `1px solid rgba(255, 255, 255, 0.1)` }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate('/admin')}>
+          <IconButton 
+            edge="start" 
+            color="inherit" 
+            onClick={() => navigate('/admin')}
+            sx={{ 
+              color: designSystem.colors.textLight,
+              '&:hover': { bgcolor: `${designSystem.colors.brandPrimary}25` }
+            }}
+          >
             <ArrowBack />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              color: designSystem.colors.textLight,
+              fontFamily: designSystem.typography.fontFamily.display 
+            }}
+          >
             {isEditing ? `Edit Group: ${currentGroup?.name}` : 'Manage Groups'}
           </Typography>
         </Toolbar>
@@ -188,7 +205,16 @@ const AdminGroups: React.FC = () => {
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              borderRadius: designSystem.borderRadius.md,
+              bgcolor: `${designSystem.colors.brandPrimary}15`,
+              color: designSystem.colors.brandPrimary,
+              border: `1px solid ${designSystem.colors.brandPrimary}`,
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -197,8 +223,23 @@ const AdminGroups: React.FC = () => {
           // Edit Group Form
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper 
+                sx={{ 
+                  p: designSystem.spacing.md,
+                  bgcolor: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: designSystem.borderRadius.bento,
+                  boxShadow: designSystem.shadows.bento,
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    color: designSystem.colors.textLight,
+                    fontFamily: designSystem.typography.fontFamily.display 
+                  }}
+                >
                   Group Details
                 </Typography>
                 
@@ -207,7 +248,16 @@ const AdminGroups: React.FC = () => {
                   label="Group Name"
                   value={groupForm.name}
                   onChange={(e) => setGroupForm(prev => ({ ...prev, name: e.target.value }))}
-                  sx={{ mb: 2 }}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      color: designSystem.colors.textLight,
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                      '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                      '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                    },
+                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                  }}
                 />
                 
                 <TextField
@@ -217,7 +267,16 @@ const AdminGroups: React.FC = () => {
                   label="Description"
                   value={groupForm.description}
                   onChange={(e) => setGroupForm(prev => ({ ...prev, description: e.target.value }))}
-                  sx={{ mb: 2 }}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      color: designSystem.colors.textLight,
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                      '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                      '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                    },
+                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                  }}
                 />
                 
                 <Box display="flex" gap={2} mt={3}>

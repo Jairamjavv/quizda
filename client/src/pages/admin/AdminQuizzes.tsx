@@ -58,6 +58,7 @@ import {
 import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
 import ContentPreview from '../../components/ContentPreview'
 import axios from 'axios'
+import { designSystem } from '../../theme/designSystem'
 
 type QuestionType = 'mcq_single' | 'mcq_multiple' | 'true_false' | 'fill_blanks';
 type ContentType = 'text' | 'markdown' | 'latex';
@@ -542,20 +543,36 @@ const AdminQuizzes: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: designSystem.colors.darkBg }}>
+        <CircularProgress sx={{ color: designSystem.colors.brandPrimary }} />
       </Box>
     )
   }
 
   return (
-    <Box>
-      <AppBar position="static">
+    <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh' }}>
+      <AppBar position="static" sx={{ bgcolor: designSystem.colors.darkBg, boxShadow: 'none', borderBottom: `1px solid rgba(255, 255, 255, 0.1)` }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate('/admin')}>
+          <IconButton 
+            edge="start" 
+            color="inherit" 
+            onClick={() => navigate('/admin')}
+            sx={{ 
+              color: designSystem.colors.textLight,
+              '&:hover': { bgcolor: `${designSystem.colors.brandPrimary}25` }
+            }}
+          >
             <ArrowBack />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              color: designSystem.colors.textLight,
+              fontFamily: designSystem.typography.fontFamily.display 
+            }}
+          >
             {isEditing ? `Edit Quiz: ${currentQuiz?.title}` : 'Manage Quizzes'}
           </Typography>
         </Toolbar>
@@ -563,7 +580,16 @@ const AdminQuizzes: React.FC = () => {
 
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert 
+            severity="error" 
+            sx={{ 
+              mb: 3,
+              borderRadius: designSystem.borderRadius.md,
+              bgcolor: `${designSystem.colors.brandPrimary}15`,
+              color: designSystem.colors.brandPrimary,
+              border: `1px solid ${designSystem.colors.brandPrimary}`,
+            }}
+          >
             {error}
           </Alert>
         )}
@@ -572,8 +598,23 @@ const AdminQuizzes: React.FC = () => {
           // Edit Quiz Form
           <Grid container spacing={3}>
             <Grid size={{ xs: 12, md: 8 }}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper 
+                sx={{ 
+                  p: designSystem.spacing.md,
+                  bgcolor: 'rgba(255, 255, 255, 0.03)',
+                  borderRadius: designSystem.borderRadius.bento,
+                  boxShadow: designSystem.shadows.bento,
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    color: designSystem.colors.textLight,
+                    fontFamily: designSystem.typography.fontFamily.display 
+                  }}
+                >
                   Quiz Details
                 </Typography>
                 
@@ -582,7 +623,16 @@ const AdminQuizzes: React.FC = () => {
                   label="Title"
                   value={quizForm.title}
                   onChange={(e) => setQuizForm(prev => ({ ...prev, title: e.target.value }))}
-                  sx={{ mb: 2 }}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      color: designSystem.colors.textLight,
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                      '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                      '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                    },
+                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                  }}
                 />
                 
                 <TextField
@@ -592,10 +642,31 @@ const AdminQuizzes: React.FC = () => {
                   label="Description"
                   value={quizForm.description}
                   onChange={(e) => setQuizForm(prev => ({ ...prev, description: e.target.value }))}
-                  sx={{ mb: 2 }}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      color: designSystem.colors.textLight,
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                      '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                      '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                    },
+                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                  }}
                 />
                 
-                <FormControl fullWidth sx={{ mb: 2 }}>
+                <FormControl 
+                  fullWidth 
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      color: designSystem.colors.textLight,
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                      '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                      '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                    },
+                    '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                  }}
+                >
                   <InputLabel>Group</InputLabel>
                   <Select
                     value={quizForm.group_id}
