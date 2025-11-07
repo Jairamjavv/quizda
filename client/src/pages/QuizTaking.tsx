@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material'
 import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 import axios from 'axios'
+import { designSystem } from '../theme/designSystem'
 
 type QuestionType = 'mcq_single' | 'mcq_multiple' | 'true_false' | 'fill_blanks';
 type ContentType = 'text' | 'markdown' | 'latex';
@@ -504,8 +505,8 @@ const QuizTaking: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: designSystem.colors.darkBg }}>
+        <CircularProgress sx={{ color: designSystem.colors.brandPrimary }} />
       </Box>
     )
   }
@@ -513,11 +514,24 @@ const QuizTaking: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Alert severity="error" action={
-          <Button color="inherit" onClick={() => navigate('/dashboard')}>
-            Back to Dashboard
-          </Button>
-        }>
+        <Alert 
+          severity="error" 
+          action={
+            <Button 
+              color="inherit" 
+              onClick={() => navigate('/dashboard')}
+              sx={{ color: designSystem.colors.textLight }}
+            >
+              Back to Dashboard
+            </Button>
+          }
+          sx={{
+            borderRadius: designSystem.borderRadius.md,
+            bgcolor: `${designSystem.colors.brandPrimary}15`,
+            color: designSystem.colors.brandPrimary,
+            border: `1px solid ${designSystem.colors.brandPrimary}`,
+          }}
+        >
           {error}
         </Alert>
       </Container>
@@ -526,25 +540,45 @@ const QuizTaking: React.FC = () => {
 
   if (showModeSelection) {
     return (
-      <>
-        <AppBar position="static">
+      <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh' }}>
+        <AppBar position="static" sx={{ bgcolor: designSystem.colors.darkBg, boxShadow: 'none', borderBottom: `1px solid rgba(255, 255, 255, 0.1)` }}>
           <Toolbar>
             <IconButton
               edge="start"
               color="inherit"
               onClick={() => navigate('/dashboard')}
-              sx={{ mr: 2 }}
+              sx={{ 
+                mr: 2,
+                color: designSystem.colors.textLight,
+                '&:hover': { bgcolor: `${designSystem.colors.brandPrimary}25` }
+              }}
             >
               <ArrowBack />
             </IconButton>
-            <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                flexGrow: 1,
+                color: designSystem.colors.textLight,
+                fontFamily: designSystem.typography.fontFamily.display 
+              }}
+            >
               Quiz Mode Selection
             </Typography>
           </Toolbar>
         </AppBar>
         
         <Container maxWidth="md" sx={{ mt: 4 }}>
-          <Paper sx={{ p: 4 }}>
+          <Paper 
+            sx={{ 
+              p: 4,
+              bgcolor: 'rgba(255, 255, 255, 0.03)',
+              borderRadius: designSystem.borderRadius.bento,
+              boxShadow: designSystem.shadows.bento,
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
             {/* Group and Quiz Selection */}
             <Box mb={4}>
               <Typography variant="h5" gutterBottom align="center" sx={{ mb: 3 }}>
@@ -659,41 +693,103 @@ const QuizTaking: React.FC = () => {
             )}
           </Paper>
         </Container>
-      </>
+      </Box>
     )
   }
 
   if (showResults && attemptResult) {
     return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Paper sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom align="center">
-            Quiz Complete!
-          </Typography>
-          <Box textAlign="center" mb={3}>
-            <Typography variant="h2" color="primary">
-              {Math.round((attemptResult.score / attemptResult.max_points) * 100)}%
-            </Typography>
-            <Typography variant="h6">
-              {attemptResult.score} / {attemptResult.max_points} points
-            </Typography>
-          </Box>
-          <Box display="flex" gap={2} justifyContent="center">
-            <Button
-              variant="contained"
-              onClick={() => navigate('/quiz/new')}
+      <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh', py: 4 }}>
+        <Container maxWidth="md">
+          <Paper 
+            sx={{ 
+              p: 4,
+              bgcolor: designSystem.colors.lightSurface,
+              borderRadius: designSystem.borderRadius.bento,
+              boxShadow: designSystem.shadows.bento,
+            }}
+          >
+            <Typography 
+              variant="h4" 
+              gutterBottom 
+              align="center"
+              sx={{ 
+                color: designSystem.colors.textDark,
+                fontFamily: designSystem.typography.fontFamily.display,
+                fontWeight: 700 
+              }}
             >
-              Take Another Quiz
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/dashboard')}
-            >
-              Back to Dashboard
-            </Button>
-          </Box>
-        </Paper>
-      </Container>
+              Quiz Complete!
+            </Typography>
+            <Box textAlign="center" mb={3}>
+              <Typography 
+                variant="h2" 
+                sx={{ 
+                  color: Math.round((attemptResult.score / attemptResult.max_points) * 100) >= 75 
+                    ? designSystem.colors.accentGreen 
+                    : Math.round((attemptResult.score / attemptResult.max_points) * 100) >= 60 
+                    ? designSystem.colors.accentYellow 
+                    : designSystem.colors.brandPrimary,
+                  fontFamily: designSystem.typography.fontFamily.mono,
+                  fontWeight: 800
+                }}
+              >
+                {Math.round((attemptResult.score / attemptResult.max_points) * 100)}%
+              </Typography>
+              <Typography 
+                variant="h6"
+                sx={{ 
+                  color: designSystem.colors.textDark,
+                  fontFamily: designSystem.typography.fontFamily.mono 
+                }}
+              >
+                {attemptResult.score} / {attemptResult.max_points} points
+              </Typography>
+            </Box>
+            <Box display="flex" gap={2} justifyContent="center">
+              <Button
+                variant="contained"
+                onClick={() => navigate('/quiz/new')}
+                sx={{
+                  bgcolor: designSystem.colors.brandPrimary,
+                  color: designSystem.colors.textLight,
+                  borderRadius: designSystem.borderRadius.sm,
+                  py: 1.5,
+                  px: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  boxShadow: designSystem.shadows.subtle,
+                  '&:hover': {
+                    bgcolor: designSystem.colors.brandHover,
+                    boxShadow: designSystem.shadows.bento,
+                  },
+                }}
+              >
+                Take Another Quiz
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => navigate('/dashboard')}
+                sx={{
+                  borderColor: 'rgba(26, 26, 26, 0.2)',
+                  color: designSystem.colors.textDark,
+                  borderRadius: designSystem.borderRadius.sm,
+                  py: 1.5,
+                  px: 3,
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  '&:hover': {
+                    borderColor: designSystem.colors.accentBlue,
+                    bgcolor: `${designSystem.colors.accentBlue}15`,
+                  },
+                }}
+              >
+                Back to Dashboard
+              </Button>
+            </Box>
+          </Paper>
+        </Container>
+      </Box>
     )
   }
 
@@ -701,19 +797,41 @@ const QuizTaking: React.FC = () => {
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100
 
   return (
-    <Box>
-      <AppBar position="static">
+    <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh' }}>
+      <AppBar position="static" sx={{ bgcolor: designSystem.colors.darkBg, boxShadow: 'none', borderBottom: `1px solid rgba(255, 255, 255, 0.1)` }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate('/dashboard')}>
+          <IconButton 
+            edge="start" 
+            color="inherit" 
+            onClick={() => navigate('/dashboard')}
+            sx={{ 
+              color: designSystem.colors.textLight,
+              '&:hover': { bgcolor: `${designSystem.colors.brandPrimary}25` }
+            }}
+          >
             <ArrowBack />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              flexGrow: 1,
+              color: designSystem.colors.textLight,
+              fontFamily: designSystem.typography.fontFamily.display 
+            }}
+          >
             {quiz?.title}
           </Typography>
           {mode === 'timed' && (
             <Box display="flex" alignItems="center" gap={1}>
-              <Timer />
-              <Typography variant="h6">
+              <Timer sx={{ color: designSystem.colors.accentYellow }} />
+              <Typography 
+                variant="h6"
+                sx={{ 
+                  color: timeLeft <= 60 ? designSystem.colors.brandPrimary : designSystem.colors.textLight,
+                  fontFamily: designSystem.typography.fontFamily.mono 
+                }}
+              >
                 {formatTime(timeLeft)}
               </Typography>
             </Box>
@@ -721,21 +839,61 @@ const QuizTaking: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="md" sx={{ mt: 4 }}>
+      <Container maxWidth="md" sx={{ mt: 4, pb: 4 }}>
         <Box mb={3}>
-          <LinearProgress variant="determinate" value={progress} sx={{ mb: 2 }} />
-          <Typography variant="body2" color="textSecondary">
+          <LinearProgress 
+            variant="determinate" 
+            value={progress} 
+            sx={{ 
+              mb: 2,
+              height: 8,
+              borderRadius: designSystem.borderRadius.sm,
+              bgcolor: 'rgba(255, 255, 255, 0.1)',
+              '& .MuiLinearProgress-bar': {
+                bgcolor: designSystem.colors.accentGreen,
+                borderRadius: designSystem.borderRadius.sm,
+              }
+            }} 
+          />
+          <Typography 
+            variant="body2" 
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.6)',
+              fontFamily: designSystem.typography.fontFamily.mono 
+            }}
+          >
             Question {currentQuestionIndex + 1} of {questions.length}
           </Typography>
         </Box>
 
-        <Paper sx={{ p: 4 }}>
+        <Paper 
+          sx={{ 
+            p: 4,
+            bgcolor: 'rgba(255, 255, 255, 0.03)',
+            borderRadius: designSystem.borderRadius.bento,
+            boxShadow: designSystem.shadows.bento,
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}
+        >
           <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
             <Box flex={1}>
-              <Typography variant="h6" gutterBottom>
+              <Typography 
+                variant="h6" 
+                gutterBottom
+                sx={{ 
+                  color: designSystem.colors.textLight,
+                  fontWeight: 600 
+                }}
+              >
                 {currentQuestion.text}
               </Typography>
-              <Typography variant="body2" color="textSecondary">
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.5)',
+                  fontFamily: designSystem.typography.fontFamily.mono 
+                }}
+              >
                 {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
               </Typography>
             </Box>
@@ -743,6 +901,16 @@ const QuizTaking: React.FC = () => {
               onClick={handleFlagQuestion}
               color={flaggedQuestions[currentQuestion._id] ? 'error' : 'default'}
               title={flaggedQuestions[currentQuestion._id] ? 'Unflag question' : 'Flag question for review'}
+              sx={{
+                color: flaggedQuestions[currentQuestion._id] 
+                  ? designSystem.colors.brandPrimary 
+                  : 'rgba(255, 255, 255, 0.5)',
+                '&:hover': {
+                  bgcolor: flaggedQuestions[currentQuestion._id]
+                    ? `${designSystem.colors.brandPrimary}25`
+                    : 'rgba(255, 255, 255, 0.05)',
+                }
+              }}
             >
               {flaggedQuestions[currentQuestion._id] ? <Flag /> : <FlagOutlined />}
             </IconButton>
@@ -760,12 +928,29 @@ const QuizTaking: React.FC = () => {
                 onChange={(e) => handleTextAnswerChange(currentQuestion._id, e.target.value)}
                 placeholder="Type your answer here..."
                 autoFocus
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: designSystem.colors.textLight,
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                    '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                    '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                  },
+                  '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+                }}
               />
             </Box>
           ) : currentQuestion.question_type === 'mcq_multiple' ? (
             // Multiple Choice (Multiple Answers) - Checkboxes
             <FormControl component="fieldset" sx={{ mt: 2, width: '100%' }}>
-              <FormLabel component="legend">Select all that apply</FormLabel>
+              <FormLabel 
+                component="legend"
+                sx={{ 
+                  color: 'rgba(255, 255, 255, 0.7)',
+                  '&.Mui-focused': { color: designSystem.colors.accentBlue }
+                }}
+              >
+                Select all that apply
+              </FormLabel>
               <Box sx={{ mt: 1 }}>
                 {currentQuestion.choices.map(choice => (
                   <FormControlLabel
@@ -774,16 +959,25 @@ const QuizTaking: React.FC = () => {
                       <Checkbox
                         checked={((answers[currentQuestion._id] as string[]) || []).includes(choice.id)}
                         onChange={(e) => handleMultipleChoiceChange(currentQuestion._id, choice.id, e.target.checked)}
+                        sx={{
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          '&.Mui-checked': { color: designSystem.colors.accentGreen }
+                        }}
                       />
                     }
                     label={choice.text}
+                    sx={{ 
+                      '& .MuiFormControlLabel-label': { 
+                        color: designSystem.colors.textLight 
+                      } 
+                    }}
                   />
                 ))}
               </Box>
             </FormControl>
           ) : (
             // Single Choice (MCQ Single, True/False) - Radio Buttons
-            <FormControl component="fieldset" sx={{ mt: 2 }}>
+            <FormControl component="fieldset" sx={{ mt: 2, width: '100%' }}>
               <RadioGroup
                 value={(answers[currentQuestion._id] as string) || ''}
                 onChange={(e) => handleAnswerChange(currentQuestion._id, e.target.value)}
@@ -792,8 +986,20 @@ const QuizTaking: React.FC = () => {
                   <FormControlLabel
                     key={choice.id}
                     value={choice.id}
-                    control={<Radio />}
+                    control={
+                      <Radio 
+                        sx={{
+                          color: 'rgba(255, 255, 255, 0.5)',
+                          '&.Mui-checked': { color: designSystem.colors.accentBlue }
+                        }}
+                      />
+                    }
                     label={choice.text}
+                    sx={{ 
+                      '& .MuiFormControlLabel-label': { 
+                        color: designSystem.colors.textLight 
+                      } 
+                    }}
                   />
                 ))}
               </RadioGroup>
@@ -804,9 +1010,26 @@ const QuizTaking: React.FC = () => {
         <Box display="flex" justifyContent="space-between" mt={3}>
           <Button
             variant="outlined"
-            startIcon={<ArrowBack />}
             onClick={handlePreviousQuestion}
             disabled={currentQuestionIndex === 0}
+            startIcon={<ArrowBack />}
+            sx={{
+              borderColor: 'rgba(255, 255, 255, 0.2)',
+              color: designSystem.colors.textLight,
+              borderRadius: designSystem.borderRadius.sm,
+              py: 1.5,
+              px: 3,
+              fontWeight: 600,
+              textTransform: 'none',
+              '&:hover': {
+                borderColor: designSystem.colors.accentBlue,
+                bgcolor: `${designSystem.colors.accentBlue}15`,
+              },
+              '&.Mui-disabled': {
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                color: 'rgba(255, 255, 255, 0.3)',
+              }
+            }}
           >
             Previous
           </Button>
@@ -815,6 +1038,20 @@ const QuizTaking: React.FC = () => {
             <Button
               variant="contained"
               onClick={handleSubmitClick}
+              sx={{
+                bgcolor: designSystem.colors.accentGreen,
+                color: designSystem.colors.textDark,
+                borderRadius: designSystem.borderRadius.sm,
+                py: 1.5,
+                px: 3,
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: designSystem.shadows.subtle,
+                '&:hover': {
+                  bgcolor: '#5BC96B',
+                  boxShadow: designSystem.shadows.bento,
+                },
+              }}
             >
               Submit Quiz
             </Button>
@@ -823,6 +1060,20 @@ const QuizTaking: React.FC = () => {
               variant="contained"
               endIcon={<ArrowForward />}
               onClick={handleNextQuestion}
+              sx={{
+                bgcolor: designSystem.colors.brandPrimary,
+                color: designSystem.colors.textLight,
+                borderRadius: designSystem.borderRadius.sm,
+                py: 1.5,
+                px: 3,
+                fontWeight: 600,
+                textTransform: 'none',
+                boxShadow: designSystem.shadows.subtle,
+                '&:hover': {
+                  bgcolor: designSystem.colors.brandHover,
+                  boxShadow: designSystem.shadows.bento,
+                },
+              }}
             >
               Next
             </Button>
