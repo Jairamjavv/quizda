@@ -214,7 +214,7 @@ class SessionManager {
    */
   async refreshToken(): Promise<TokenResponse> {
     try {
-      logger.info("Refreshing access token...");
+      logger.debug("Attempting to refresh access token...");
 
       const response = await axios.post(
         "/auth/refresh",
@@ -229,8 +229,27 @@ class SessionManager {
 
       logger.info("Access token refreshed successfully");
       return { accessToken, csrfToken };
-    } catch (error) {
-      logger.error("Failed to refresh token", error);
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const isNetworkError =
+        error?.message === "Network Error" ||
+        error?.code === "ERR_NETWORK" ||
+        error?.code === "ERR_CONNECTION_REFUSED";
+
+      // Don't log as error for expected scenarios
+      if (status === 401 || status === 403) {
+        // No/invalid refresh token - normal for logged out users
+        logger.debug("No valid refresh token available", { status });
+      } else if (isNetworkError) {
+        // Network/connection issues - common in dev when server isn't running
+        logger.debug("Cannot connect to authentication server", {
+          message: error?.message,
+          code: error?.code,
+        });
+      } else {
+        // Actual unexpected errors (500, etc.)
+        logger.error("Failed to refresh token", error);
+      }
       throw error;
     }
   }
@@ -294,7 +313,12 @@ class SessionManager {
   /**
    * Get current user from token
    */
-  getCurrentUser(): { id: number; email: string; role: string } | null {
+  getCurrentUser(): {
+    id: number;
+    email: string;
+    role: string;
+    mode?: string;
+  } | null {
     if (!this.accessToken) return null;
 
     const decoded = this.decodeToken(this.accessToken);
@@ -303,6 +327,7 @@ class SessionManager {
           id: decoded.id,
           email: decoded.email,
           role: decoded.role,
+          mode: decoded.mode,
         }
       : null;
   }

@@ -7,14 +7,22 @@ export const designSystem = {
     brandPrimary: "#F54848", // Main CTA buttons, brand bar
     brandHover: "#DD3333", // Hover state for primary
 
+    // Landing Page Colors
+    contributeGreen: "#42C97B", // Contribute mode background
+    contributeGreenHover: "#3BB96E", // Contribute mode hover
+    attemptBlue: "#3B9BFF", // Attempt mode background
+    attemptBlueHover: "#2E8BEF", // Attempt mode hover
+
     // Backgrounds
     darkBg: "#1A1A1A", // Page backgrounds
     lightSurface: "#F3F3F3", // Bento tiles, cards
 
-    // Accents
-    accentYellow: "#FFD452", // XP progress, highlights
-    accentGreen: "#67D67D", // Correct answers, success banners
-    accentBlue: "#4DB8FF", // Neutral or secondary info
+    // Accents (Desaturated by 5-8% for premium dark background feel)
+    accentYellow: "#F5E099", // Desaturated lighter yellow for better SWOT Analysis readability
+    accentYellowDark: "#F5CE73", // Desaturated yellow for high emphasis
+    accentGreen: "#7DD68D", // Desaturated green - correct answers, success banners
+    accentBlue: "#6BC2F5", // Desaturated blue - neutral or secondary info
+    accentOrange: "#F5AC52", // Desaturated orange - progress potential, neutral state (0 streak)
 
     // Text
     textLight: "#FFFFFF", // Text on dark
@@ -31,7 +39,7 @@ export const designSystem = {
     fontFamily: {
       primary:
         '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      display: '"Poppins", "Inter", sans-serif',
+      display: '"Rubik", "Inter", sans-serif',
       mono: '"Rubik Mono One", "JetBrains Mono", monospace',
     },
     fontSize: {

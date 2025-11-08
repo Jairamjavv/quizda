@@ -12,6 +12,7 @@ const tables = [
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'user',
+    mode VARCHAR(50) DEFAULT 'attempt',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP
   );`,

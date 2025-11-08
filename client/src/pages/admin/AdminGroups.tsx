@@ -16,7 +16,6 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  CircularProgress,
   Alert,
   Paper,
   List,
@@ -25,6 +24,7 @@ import {
   ListItemSecondaryAction,
   Chip
 } from '@mui/material'
+import SandglassLoader from '../../components/SandglassLoader'
 import {
   ArrowBack,
   Add,
@@ -169,7 +169,7 @@ const AdminGroups: React.FC = () => {
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ bgcolor: designSystem.colors.darkBg }}>
-        <CircularProgress sx={{ color: designSystem.colors.brandPrimary }} />
+        <SandglassLoader size={80} color={designSystem.colors.brandPrimary} />
       </Box>
     )
   }
@@ -195,6 +195,7 @@ const AdminGroups: React.FC = () => {
             sx={{ 
               flexGrow: 1,
               color: designSystem.colors.textLight,
+              fontWeight: 700,
               fontFamily: designSystem.typography.fontFamily.display 
             }}
           >
@@ -203,7 +204,7 @@ const AdminGroups: React.FC = () => {
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
         {error && (
           <Alert 
             severity="error" 
@@ -299,25 +300,59 @@ const AdminGroups: React.FC = () => {
             </Grid>
             
             <Grid size={{ xs: 12, md: 4 }}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper 
+                sx={{ 
+                  p: 3,
+                  background: 'linear-gradient(135deg, #121212 0%, #181818 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: designSystem.borderRadius.bento,
+                  boxShadow: designSystem.shadows.bento,
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    color: designSystem.colors.textLight,
+                    fontWeight: 700,
+                    fontFamily: designSystem.typography.fontFamily.display,
+                  }}
+                >
                   Group Stats
                 </Typography>
                 <Box mb={2}>
-                  <Typography color="textSecondary">Quizzes in Group</Typography>
-                  <Typography variant="h4">
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>Quizzes in Group</Typography>
+                  <Typography 
+                    variant="h4"
+                    sx={{ 
+                      color: designSystem.colors.textLight,
+                      fontFamily: designSystem.typography.fontFamily.mono,
+                    }}
+                  >
                     {currentGroup ? getQuizzesInGroup(currentGroup._id).length : 0}
                   </Typography>
                 </Box>
                 <Box mb={2}>
-                  <Typography color="textSecondary">Published Quizzes</Typography>
-                  <Typography variant="h4">
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>Published Quizzes</Typography>
+                  <Typography 
+                    variant="h4"
+                    sx={{ 
+                      color: designSystem.colors.textLight,
+                      fontFamily: designSystem.typography.fontFamily.mono,
+                    }}
+                  >
                     {currentGroup ? getQuizzesInGroup(currentGroup._id).filter(q => q.is_published).length : 0}
                   </Typography>
                 </Box>
                 <Box mb={2}>
-                  <Typography color="textSecondary">Total Points</Typography>
-                  <Typography variant="h4">
+                  <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>Total Points</Typography>
+                  <Typography 
+                    variant="h4"
+                    sx={{ 
+                      color: designSystem.colors.textLight,
+                      fontFamily: designSystem.typography.fontFamily.mono,
+                    }}
+                  >
                     {currentGroup ? getQuizzesInGroup(currentGroup._id).reduce((sum, q) => sum + q.total_points, 0) : 0}
                   </Typography>
                 </Box>
@@ -326,35 +361,88 @@ const AdminGroups: React.FC = () => {
             
             {/* Quizzes in Group */}
             <Grid size={{ xs: 12 }}>
-              <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
+              <Paper 
+                sx={{ 
+                  p: 3,
+                  background: 'linear-gradient(135deg, #121212 0%, #181818 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: designSystem.borderRadius.bento,
+                  boxShadow: designSystem.shadows.bento,
+                }}
+              >
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    color: designSystem.colors.textLight,
+                    fontWeight: 700,
+                    fontFamily: designSystem.typography.fontFamily.display,
+                  }}
+                >
                   Quizzes in this Group ({currentGroup ? getQuizzesInGroup(currentGroup._id).length : 0})
                 </Typography>
                 
                 {currentGroup && getQuizzesInGroup(currentGroup._id).length > 0 ? (
                   <List>
                     {getQuizzesInGroup(currentGroup._id).map(quiz => (
-                      <ListItem key={quiz._id} divider>
+                      <ListItem 
+                        key={quiz._id} 
+                        divider
+                        sx={{
+                          borderColor: 'rgba(255, 255, 255, 0.08)',
+                          '&:hover': {
+                            bgcolor: 'rgba(255, 255, 255, 0.03)',
+                          }
+                        }}
+                      >
                         <ListItemText
-                          primary={quiz.title}
+                          primary={
+                            <Typography sx={{ color: designSystem.colors.textLight, fontWeight: 600 }}>
+                              {quiz.title}
+                            </Typography>
+                          }
                           secondary={
                             <Box>
-                              <Typography variant="body2" color="textSecondary">
+                              <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                                 {quiz.description}
                               </Typography>
-                              <Box display="flex" gap={1} mt={1}>
+                              <Box display="flex" gap={1} mt={1} flexWrap="wrap">
                                 <Chip
                                   label={quiz.is_published ? 'Published' : 'Draft'}
-                                  color={quiz.is_published ? 'success' : 'warning'}
                                   size="small"
+                                  sx={{
+                                    bgcolor: quiz.is_published 
+                                      ? 'rgba(125, 214, 141, 0.15)' 
+                                      : 'rgba(245, 224, 153, 0.15)',
+                                    color: quiz.is_published 
+                                      ? designSystem.colors.accentGreen 
+                                      : designSystem.colors.accentYellow,
+                                    border: `1px solid ${quiz.is_published 
+                                      ? designSystem.colors.accentGreen 
+                                      : designSystem.colors.accentYellow}`,
+                                    fontWeight: 600,
+                                  }}
                                 />
                                 <Chip
                                   label={`${quiz.total_points} pts`}
                                   size="small"
-                                  variant="outlined"
+                                  sx={{
+                                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                                    color: designSystem.colors.textLight,
+                                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                                  }}
                                 />
                                 {quiz.tags.map(tag => (
-                                  <Chip key={tag} label={tag} size="small" />
+                                  <Chip 
+                                    key={tag} 
+                                    label={tag} 
+                                    size="small"
+                                    sx={{
+                                      bgcolor: 'rgba(107, 194, 245, 0.15)',
+                                      color: designSystem.colors.accentBlue,
+                                      border: `1px solid ${designSystem.colors.accentBlue}`,
+                                    }}
+                                  />
                                 ))}
                               </Box>
                             </Box>
@@ -364,6 +452,14 @@ const AdminGroups: React.FC = () => {
                           <Button
                             size="small"
                             onClick={() => navigate(`/admin/quizzes/${quiz._id}`)}
+                            sx={{
+                              color: designSystem.colors.textLight,
+                              borderColor: 'rgba(255, 255, 255, 0.12)',
+                              '&:hover': {
+                                borderColor: designSystem.colors.accentBlue,
+                                bgcolor: 'rgba(107, 194, 245, 0.1)',
+                              }
+                            }}
                           >
                             Edit Quiz
                           </Button>
@@ -374,7 +470,14 @@ const AdminGroups: React.FC = () => {
                 ) : (
                   <Box textAlign="center" py={4}>
                     <Quiz sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                    <Typography variant="h6" gutterBottom>
+                    <Typography 
+                      variant="h6" 
+                      gutterBottom
+                      sx={{ 
+                        color: designSystem.colors.textLight,
+                        fontWeight: 700,
+                      }}
+                    >
                       No Quizzes in this Group
                     </Typography>
                     <Typography variant="body2" color="textSecondary" gutterBottom>
@@ -402,9 +505,10 @@ const AdminGroups: React.FC = () => {
               mb={3}
               sx={{
                 p: 3,
-                backgroundColor: '#FFFFFF',
-                borderRadius: 2,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                background: 'linear-gradient(135deg, #121212 0%, #181818 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: designSystem.borderRadius.bento,
+                boxShadow: designSystem.shadows.bento,
               }}
             >
               <Button
@@ -412,13 +516,19 @@ const AdminGroups: React.FC = () => {
                 startIcon={<Add />}
                 onClick={() => setShowCreateDialog(true)}
                 sx={{
-                  backgroundColor: '#00B15E',
-                  color: '#FFFFFF',
+                  bgcolor: designSystem.colors.accentGreen,
+                  color: designSystem.colors.textDark,
                   textTransform: 'none',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   px: 3,
+                  py: 1.5,
+                  borderRadius: designSystem.borderRadius.bento,
+                  boxShadow: designSystem.shadows.bento,
+                  transition: designSystem.animations.transition.default,
                   '&:hover': {
-                    backgroundColor: '#009950'
+                    bgcolor: designSystem.colors.accentGreen,
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 8px 24px rgba(125, 214, 141, 0.3)',
                   }
                 }}
               >
@@ -426,32 +536,70 @@ const AdminGroups: React.FC = () => {
               </Button>
             </Box>
 
-            <Paper>
+            <Paper
+              sx={{
+                background: 'linear-gradient(135deg, #121212 0%, #181818 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: designSystem.borderRadius.bento,
+                boxShadow: designSystem.shadows.bento,
+              }}
+            >
               <Box p={3}>
-                <Typography variant="h6" gutterBottom>
+                <Typography 
+                  variant="h6" 
+                  gutterBottom
+                  sx={{ 
+                    color: designSystem.colors.textLight,
+                    fontWeight: 700,
+                    fontFamily: designSystem.typography.fontFamily.display,
+                  }}
+                >
                   All Groups ({groups.length})
                 </Typography>
               </Box>
             <List>
               {groups.map(group => (
-                <ListItem key={group._id} divider>
+                <ListItem 
+                  key={group._id} 
+                  divider
+                  sx={{
+                    borderColor: 'rgba(255, 255, 255, 0.08)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.03)',
+                    }
+                  }}
+                >
                   <ListItemText
-                    primary={group.name}
+                    primary={
+                      <Typography sx={{ color: designSystem.colors.textLight, fontWeight: 600 }}>
+                        {group.name}
+                      </Typography>
+                    }
                     secondary={
                       <Box>
-                        <Typography variant="body2" color="textSecondary">
+                        <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
                           {group.description}
                         </Typography>
                         <Box display="flex" gap={1} mt={1}>
                           <Chip
                             label={`${getQuizzesInGroup(group._id).length} quizzes`}
                             size="small"
-                            color="primary"
+                            sx={{
+                              bgcolor: 'rgba(107, 194, 245, 0.15)',
+                              color: designSystem.colors.accentBlue,
+                              border: `1px solid ${designSystem.colors.accentBlue}`,
+                              fontWeight: 600,
+                            }}
                           />
                           <Chip
                             label={`${getQuizzesInGroup(group._id).filter(q => q.is_published).length} published`}
                             size="small"
-                            color="success"
+                            sx={{
+                              bgcolor: 'rgba(125, 214, 141, 0.15)',
+                              color: designSystem.colors.accentGreen,
+                              border: `1px solid ${designSystem.colors.accentGreen}`,
+                              fontWeight: 600,
+                            }}
                           />
                         </Box>
                       </Box>
@@ -462,13 +610,14 @@ const AdminGroups: React.FC = () => {
                       <IconButton
                         size="small"
                         onClick={() => navigate(`/admin/groups/${group._id}`)}
+                        sx={{ color: designSystem.colors.textLight }}
                       >
                         <Edit />
                       </IconButton>
                       <IconButton
                         size="small"
                         onClick={() => handleDeleteGroup(group._id)}
-                        color="error"
+                        sx={{ color: designSystem.colors.brandPrimary }}
                       >
                         <Delete />
                       </IconButton>
@@ -479,8 +628,16 @@ const AdminGroups: React.FC = () => {
               {groups.length === 0 && (
                 <ListItem>
                   <ListItemText
-                    primary="No groups yet"
-                    secondary="Create your first group to organize quizzes"
+                    primary={
+                      <Typography sx={{ color: designSystem.colors.textLight }}>
+                        No groups yet
+                      </Typography>
+                    }
+                    secondary={
+                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+                        Create your first group to organize quizzes
+                      </Typography>
+                    }
                   />
                 </ListItem>
               )}
@@ -490,15 +647,39 @@ const AdminGroups: React.FC = () => {
         )}
 
         {/* Create Group Dialog */}
-        <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)} maxWidth="md" fullWidth>
-          <DialogTitle>Create New Group</DialogTitle>
+        <Dialog 
+          open={showCreateDialog} 
+          onClose={() => setShowCreateDialog(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              bgcolor: designSystem.colors.darkBg,
+              backgroundImage: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+            }
+          }}
+        >
+          <DialogTitle sx={{ color: designSystem.colors.textLight }}>
+            Create New Group
+          </DialogTitle>
           <DialogContent>
             <TextField
               fullWidth
               label="Group Name"
               value={groupForm.name}
               onChange={(e) => setGroupForm(prev => ({ ...prev, name: e.target.value }))}
-              sx={{ mb: 2, mt: 1 }}
+              sx={{ 
+                mb: 2, 
+                mt: 1,
+                '& .MuiOutlinedInput-root': {
+                  color: designSystem.colors.textLight,
+                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                  '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                },
+                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+              }}
             />
             <TextField
               fullWidth
@@ -507,12 +688,38 @@ const AdminGroups: React.FC = () => {
               label="Description"
               value={groupForm.description}
               onChange={(e) => setGroupForm(prev => ({ ...prev, description: e.target.value }))}
-              sx={{ mb: 2 }}
+              sx={{ 
+                mb: 2,
+                '& .MuiOutlinedInput-root': {
+                  color: designSystem.colors.textLight,
+                  '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.2)' },
+                  '&:hover fieldset': { borderColor: designSystem.colors.accentBlue },
+                  '&.Mui-focused fieldset': { borderColor: designSystem.colors.brandPrimary },
+                },
+                '& .MuiInputLabel-root': { color: 'rgba(255, 255, 255, 0.6)' },
+              }}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={handleCreateGroup} variant="contained">Create</Button>
+            <Button 
+              onClick={() => setShowCreateDialog(false)}
+              sx={{ color: designSystem.colors.textLight }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleCreateGroup} 
+              variant="contained"
+              sx={{
+                bgcolor: designSystem.colors.brandPrimary,
+                color: designSystem.colors.textLight,
+                '&:hover': {
+                  bgcolor: designSystem.colors.brandHover,
+                }
+              }}
+            >
+              Create
+            </Button>
           </DialogActions>
         </Dialog>
       </Container>

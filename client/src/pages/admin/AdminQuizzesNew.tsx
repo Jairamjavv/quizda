@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AppBar, Toolbar, IconButton, Typography, Box, Container, Grid, Alert, Button } from '@mui/material'
+import { AppBar, Toolbar, IconButton, Typography, Box, Container, Grid } from '@mui/material'
 import { ArrowBack } from '@mui/icons-material'
 import axios from 'axios'
 import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
@@ -9,41 +9,30 @@ import { designSystem } from '../../theme/designSystem'
 import type { Quiz, Group } from './types'
 import QuizListPanel from './components/QuizListPanel'
 
-const AdminQuizzes: React.FC = () => {
+const AdminQuizzesNew: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
-
   const [quizzes, setQuizzes] = useState<Quiz[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
 
-  useEffect(() => { void fetchData() }, [])
-
-  const fetchData = async () => {
-    setLoading(true)
+  useEffect(() => { (async () => {
     try {
       const [qR, gR] = await Promise.all([axios.get('/admin/quizzes'), axios.get('/admin/groups')])
       setQuizzes(qR.data || [])
       setGroups(gR.data || [])
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to load admin data')
+    } catch (e) {
+      // ignore; will show empty state
     } finally { setLoading(false) }
-  }
+  })() }, [])
 
-  if (loading) return (
-    <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" sx={{ bgcolor: designSystem.colors.darkBg }}>
-      <SandglassLoader size={48} color={designSystem.colors.brandPrimary} />
-    </Box>
-  )
+  if (loading) return (<Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" sx={{ bgcolor: designSystem.colors.darkBg }}><SandglassLoader size={48} color={designSystem.colors.brandPrimary} /></Box>)
 
   return (
     <Box sx={{ bgcolor: designSystem.colors.darkBg, minHeight: '100vh' }}>
       <AppBar position="static" sx={{ bgcolor: designSystem.colors.darkBg, boxShadow: 'none', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
         <Toolbar>
-          <IconButton edge="start" color="inherit" onClick={() => navigate('/admin')} sx={{ color: designSystem.colors.textLight }}>
-            <ArrowBack />
-          </IconButton>
+          <IconButton edge="start" color="inherit" onClick={() => navigate('/admin')} sx={{ color: designSystem.colors.textLight }}><ArrowBack /></IconButton>
           <Typography 
             variant="h6" 
             sx={{ 
@@ -58,18 +47,12 @@ const AdminQuizzes: React.FC = () => {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
-
         <Grid container spacing={3}>
           <Grid sx={{ width: { xs: '100%', md: 360 } }}>
-            <QuizListPanel quizzes={quizzes} groups={groups} onSelectQuiz={(qid) => {/* noop */}} onCreate={() => {/* noop */}} onDelete={() => {/* noop */}} />
+            <QuizListPanel quizzes={quizzes} groups={groups} onSelectQuiz={() => {}} onCreate={() => {}} onDelete={() => {}} />
           </Grid>
-
           <Grid sx={{ flex: 1 }}>
-            <Typography color="text.secondary">Select a quiz from the left to view or edit details.</Typography>
-            <Box mt={2}>
-              <Button variant="contained" onClick={() => navigate('/admin/quizzes/new')}>Create New Quiz</Button>
-            </Box>
+            <Typography color="text.secondary">Select a quiz to edit or create a new quiz.</Typography>
           </Grid>
         </Grid>
       </Container>
@@ -77,4 +60,4 @@ const AdminQuizzes: React.FC = () => {
   )
 }
 
-export default AdminQuizzes
+export default AdminQuizzesNew

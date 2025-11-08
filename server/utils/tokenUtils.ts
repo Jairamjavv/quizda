@@ -6,6 +6,7 @@ export interface TokenPayload {
   id: number;
   email: string;
   role: string;
+  mode?: string;
   sessionId?: string;
 }
 
