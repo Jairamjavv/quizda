@@ -257,7 +257,7 @@ const Landing: React.FC = () => {
             textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)',
           }}
         >
-          © {currentYear} Quizda. All rights reserved. — With love from Tamil Nadu, India ❤️
+          © {currentYear} Quizda. All rights reserved. — With love from India ❤️
         </Typography>
       </Box>
     </Box>
