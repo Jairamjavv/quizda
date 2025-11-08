@@ -1,48 +1,32 @@
 import React from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import { AuthProviderV2 as AuthProvider } from './contexts/AuthContextV2'
-import { useAuthV2 as useAuth } from './contexts/AuthContextV2'
 import ProtectedRoute from './components/ProtectedRoute'
+import AuthRedirect from './components/AuthRedirect'
 import { SessionExpiryModal } from './components/SessionExpiryModal'
-import { Box, CircularProgress } from '@mui/material'
+import Landing from './pages/Landing'
 import Login from './pages/Login'
-import Register from './pages/Register'
-import Dashboard from './pages/Dashboard'
-import QuizTaking from './pages/QuizTaking'
-import QuizHistory from './pages/QuizHistory'
-import AttemptReview from './pages/AttemptReview'
+import Register from './pages/contributor/Register'
+import Dashboard from './pages/attempt/Dashboard'
+import QuizTaking from './pages/attempt/QuizTaking'
+import QuizHistory from './pages/attempt/QuizHistory'
+import AttemptReview from './pages/attempt/AttemptReview'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import AdminQuizzes from './pages/admin/AdminQuizzes'
+import AdminQuizzes from './pages/admin/AdminQuizzesNew'
 import AdminGroups from './pages/admin/AdminGroups'
 import AdminLogin from './pages/admin/AdminLogin'
-
-// Root redirect component that checks authentication
-const RootRedirect: React.FC = () => {
-  const { user, loading } = useAuth()
-  
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <CircularProgress />
-      </Box>
-    )
-  }
-  
-  // Redirect to dashboard if authenticated, otherwise to login
-  return <Navigate to={user ? "/dashboard" : "/auth/login"} replace />
-}
 
 function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<RootRedirect />} />
-        <Route path="/auth/login" element={<Login />} />
-        <Route path="/auth/register" element={<Register />} />
+        {/* Public routes - redirect to dashboard if already logged in */}
+        <Route path="/" element={<AuthRedirect><Landing /></AuthRedirect>} />
+        <Route path="/auth/login" element={<AuthRedirect><Login /></AuthRedirect>} />
+        <Route path="/auth/register" element={<AuthRedirect><Register /></AuthRedirect>} />
         
-        {/* Admin routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
+        {/* Admin routes - admin login also redirects if already logged in */}
+        <Route path="/admin/login" element={<AuthRedirect><AdminLogin /></AuthRedirect>} />
         <Route path="/admin" element={<ProtectedRoute requireAdmin={true} />}>
           <Route index element={<AdminDashboard />} />
           <Route path="quizzes" element={<AdminQuizzes />} />
@@ -51,7 +35,7 @@ function App() {
           <Route path="groups/:id" element={<AdminGroups />} />
         </Route>
         
-        {/* User routes */}
+        {/* User routes - protected, require authentication */}
         <Route path="/dashboard" element={<ProtectedRoute />}>
           <Route index element={<Dashboard />} />
         </Route>

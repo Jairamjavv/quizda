@@ -11,15 +11,20 @@ import {
   AppBar,
   Toolbar,
   IconButton,
-  CircularProgress,
   Alert,
   Chip,
   Paper,
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction
+  ListItemSecondaryAction,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Tooltip
 } from '@mui/material'
+import SandglassLoader from '../../components/SandglassLoader'
 import {
   Quiz,
   Group,
@@ -61,6 +66,8 @@ const AdminDashboard: React.FC = () => {
   const [groups, setGroups] = useState<GroupSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [quizFilter, setQuizFilter] = useState<'all' | 'published' | 'draft' | 'recent'>('recent')
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   useEffect(() => {
     fetchDashboardData()
@@ -74,11 +81,23 @@ const AdminDashboard: React.FC = () => {
       ])
       setQuizzes(quizzesResponse.data)
       setGroups(groupsResponse.data)
+      setLastUpdated(new Date()) // Update timestamp
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to load dashboard data')
     } finally {
       setLoading(false)
     }
+  }
+
+  const getRelativeTime = (date: Date) => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+    if (seconds < 60) return 'just now'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes} min ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+    const days = Math.floor(hours / 24)
+    return `${days} day${days > 1 ? 's' : ''} ago`
   }
 
   const handleLogout = () => {
@@ -139,16 +158,7 @@ const AdminDashboard: React.FC = () => {
           animation: 'fadeIn 300ms ease-in',
         }}
       >
-        <CircularProgress 
-          sx={{ 
-            color: designSystem.colors.brandPrimary,
-            '@keyframes pulse': {
-              '0%, 100%': { transform: 'scale(1)' },
-              '50%': { transform: 'scale(1.05)' },
-            },
-            animation: 'pulse 2s ease-in-out infinite',
-          }} 
-        />
+        <SandglassLoader size={80} color={designSystem.colors.brandPrimary} />
       </Box>
     )
   }
@@ -249,7 +259,7 @@ const AdminDashboard: React.FC = () => {
           </Alert>
         )}
 
-        {/* Bento Box Grid Layout */}
+        {/* Stats Cards Row */}
         <Box 
           sx={{
             display: 'grid',
@@ -259,7 +269,7 @@ const AdminDashboard: React.FC = () => {
               md: 'repeat(12, 1fr)',
             },
             gap: { xs: 2, sm: 3 },
-            gridAutoRows: 'minmax(120px, auto)',
+            mb: { xs: 4, sm: 5 }, // Increased vertical spacing between rows
             '@keyframes staggerIn': {
               from: { transform: 'scale(0.95)', opacity: 0 },
               to: { transform: 'scale(1)', opacity: 1 },
@@ -279,8 +289,11 @@ const AdminDashboard: React.FC = () => {
               animation: 'staggerIn 500ms ease-out 100ms backwards',
               cursor: 'pointer',
               '&:hover': {
-                transform: 'translateY(-4px) scale(1.02)',
-                boxShadow: designSystem.shadows.hover,
+                transform: 'translateY(-4px) scale(1.03)', // Enhanced scale
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', // Soft shadow
+                '& .stat-icon-box': {
+                  transform: 'translateY(-2px)', // Icon floats upward
+                },
               },
               '&:active': {
                 transform: 'translateY(-2px) scale(1)',
@@ -289,6 +302,7 @@ const AdminDashboard: React.FC = () => {
           >
             <CardContent sx={{ p: { xs: 2, sm: designSystem.spacing.md } }}>
               <Box 
+                className="stat-icon-box"
                 sx={{ 
                   width: { xs: 48, sm: 56 }, 
                   height: { xs: 48, sm: 56 }, 
@@ -299,9 +313,6 @@ const AdminDashboard: React.FC = () => {
                   justifyContent: 'center',
                   mb: 2,
                   transition: designSystem.animations.transition.default,
-                  '&:hover': {
-                    transform: 'rotate(10deg)',
-                  },
                 }}
               >
                 <Quiz sx={{ fontSize: { xs: 24, sm: 28 }, color: designSystem.colors.textLight }} />
@@ -312,12 +323,13 @@ const AdminDashboard: React.FC = () => {
                   fontWeight: 800, 
                   mb: 0.5,
                   fontFamily: designSystem.typography.fontFamily.mono,
-                  fontSize: { xs: '2rem', sm: '2.5rem' },
+                  fontSize: { xs: '2.5rem', sm: '3rem' }, // 40-48px - hero typography
+                  lineHeight: 1.1,
                 }}
               >
                 {quizzes.length}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              <Typography variant="body2" sx={{ opacity: 0.9, fontWeight: 500 }}>
                 Total Quizzes
               </Typography>
             </CardContent>
@@ -334,13 +346,17 @@ const AdminDashboard: React.FC = () => {
               border: 'none',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: designSystem.shadows.hover,
+                transform: 'translateY(-4px) scale(1.03)', // Enhanced scale
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', // Soft shadow
+                '& .stat-icon-box': {
+                  transform: 'translateY(-2px)', // Icon floats upward
+                },
               },
             }}
           >
             <CardContent sx={{ p: designSystem.spacing.md }}>
               <Box 
+                className="stat-icon-box"
                 sx={{ 
                   width: 56, 
                   height: 56, 
@@ -350,6 +366,7 @@ const AdminDashboard: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 2,
+                  transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <Visibility sx={{ fontSize: 28, color: designSystem.colors.textDark }} />
@@ -359,12 +376,14 @@ const AdminDashboard: React.FC = () => {
                 sx={{ 
                   fontWeight: 800, 
                   mb: 0.5,
-                  fontFamily: designSystem.typography.fontFamily.mono 
+                  fontFamily: designSystem.typography.fontFamily.mono,
+                  fontSize: { xs: '2.5rem', sm: '3rem' }, // 40-48px - hero typography
+                  lineHeight: 1.1,
                 }}
               >
                 {quizzes.filter(q => q.is_published).length}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500 }}>
                 Published
               </Typography>
             </CardContent>
@@ -381,13 +400,17 @@ const AdminDashboard: React.FC = () => {
               border: 'none',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: designSystem.shadows.hover,
+                transform: 'translateY(-4px) scale(1.03)', // Enhanced scale
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', // Soft shadow
+                '& .stat-icon-box': {
+                  transform: 'translateY(-2px)', // Icon floats upward
+                },
               },
             }}
           >
             <CardContent sx={{ p: designSystem.spacing.md }}>
               <Box 
+                className="stat-icon-box"
                 sx={{ 
                   width: 56, 
                   height: 56, 
@@ -397,6 +420,7 @@ const AdminDashboard: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 2,
+                  transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <VisibilityOff sx={{ fontSize: 28, color: designSystem.colors.textDark }} />
@@ -406,14 +430,30 @@ const AdminDashboard: React.FC = () => {
                 sx={{ 
                   fontWeight: 800, 
                   mb: 0.5,
-                  fontFamily: designSystem.typography.fontFamily.mono 
+                  fontFamily: designSystem.typography.fontFamily.mono,
+                  fontSize: { xs: '2.5rem', sm: '3rem' }, // 40-48px - hero typography
+                  lineHeight: 1.1,
                 }}
               >
                 {quizzes.filter(q => !q.is_published).length}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500 }}>
                 Drafts
               </Typography>
+              {quizzes.filter(q => !q.is_published).length === 0 && (
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    display: 'block',
+                    mt: 0.5, 
+                    opacity: 0.7,
+                    fontSize: '11px',
+                    fontStyle: 'italic',
+                  }}
+                >
+                  🎯 All quizzes published!
+                </Typography>
+              )}
             </CardContent>
           </Card>
 
@@ -428,13 +468,17 @@ const AdminDashboard: React.FC = () => {
               border: 'none',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
-                transform: 'translateY(-4px)',
-                boxShadow: designSystem.shadows.hover,
+                transform: 'translateY(-4px) scale(1.03)', // Enhanced scale
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)', // Soft shadow
+                '& .stat-icon-box': {
+                  transform: 'translateY(-2px)', // Icon floats upward
+                },
               },
             }}
           >
             <CardContent sx={{ p: designSystem.spacing.md }}>
               <Box 
+                className="stat-icon-box"
                 sx={{ 
                   width: 56, 
                   height: 56, 
@@ -444,6 +488,7 @@ const AdminDashboard: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 2,
+                  transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 }}
               >
                 <Group sx={{ fontSize: 28, color: designSystem.colors.textDark }} />
@@ -453,29 +498,32 @@ const AdminDashboard: React.FC = () => {
                 sx={{ 
                   fontWeight: 800, 
                   mb: 0.5,
-                  fontFamily: designSystem.typography.fontFamily.mono 
+                  fontFamily: designSystem.typography.fontFamily.mono,
+                  fontSize: { xs: '2.5rem', sm: '3rem' }, // 40-48px - hero typography
+                  lineHeight: 1.1,
                 }}
               >
                 {groups.length}
               </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ opacity: 0.8, fontWeight: 500 }}>
                 Groups
               </Typography>
             </CardContent>
           </Card>
 
-          {/* Quick Actions Card - Light Surface */}
+          {/* Quick Actions Card - Light Surface with distinct frame */}
           <Card 
             sx={{
               gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 3' },
               borderRadius: designSystem.borderRadius.bento,
-              border: 'none',
+              border: `1px solid rgba(26, 26, 26, 0.12)`,
               boxShadow: designSystem.shadows.bento,
-              bgcolor: designSystem.colors.lightSurface,
+              bgcolor: '#F5F5F5', // Subtle tinted background for distinction
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': {
                 transform: 'translateY(-4px)',
                 boxShadow: designSystem.shadows.hover,
+                borderColor: 'rgba(26, 26, 26, 0.2)',
               },
             }}
           >
@@ -492,117 +540,280 @@ const AdminDashboard: React.FC = () => {
                 Quick Actions
               </Typography>
               <Box display="flex" flexDirection="column" gap={2}>
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => navigate('/admin/quizzes')}
-                  fullWidth
-                  sx={{
-                    bgcolor: designSystem.colors.brandPrimary,
-                    color: designSystem.colors.textLight,
-                    borderRadius: designSystem.borderRadius.sm,
-                    py: 1.5,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    boxShadow: designSystem.shadows.subtle,
-                    '&:hover': {
-                      bgcolor: designSystem.colors.brandHover,
-                      transform: 'translateY(-2px)',
-                      boxShadow: designSystem.shadows.bento,
+                <Tooltip 
+                  title="Shortcut to quiz creation" 
+                  placement="right"
+                  arrow
+                  componentsProps={{
+                    tooltip: {
+                      sx: {
+                        bgcolor: 'rgba(26, 26, 26, 0.95)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                      }
                     },
+                    arrow: {
+                      sx: {
+                        color: 'rgba(26, 26, 26, 0.95)',
+                      }
+                    }
                   }}
                 >
-                  Create New Quiz
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Add />}
-                  onClick={() => navigate('/admin/groups')}
-                  fullWidth
-                  sx={{
-                    borderColor: 'rgba(26, 26, 26, 0.2)',
-                    color: designSystem.colors.textDark,
-                    borderRadius: designSystem.borderRadius.sm,
-                    py: 1.5,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    '&:hover': {
-                      borderColor: designSystem.colors.accentBlue,
-                      bgcolor: `${designSystem.colors.accentBlue}15`,
+                  <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => navigate('/admin/quizzes')}
+                    fullWidth
+                    sx={{
+                      bgcolor: designSystem.colors.brandPrimary,
+                      color: designSystem.colors.textLight,
+                      borderRadius: designSystem.borderRadius.sm,
+                      py: 1.5,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      boxShadow: designSystem.shadows.subtle,
+                      '&:hover': {
+                        bgcolor: designSystem.colors.brandHover,
+                        transform: 'translateY(-2px)',
+                        boxShadow: designSystem.shadows.bento,
+                      },
+                    }}
+                  >
+                    Create New Quiz
+                  </Button>
+                </Tooltip>
+                <Tooltip 
+                  title="Shortcut to group management" 
+                  placement="right"
+                  arrow
+                  componentsProps={{
+                    tooltip: {
+                      sx: {
+                        bgcolor: 'rgba(26, 26, 26, 0.95)',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        px: 1.5,
+                        py: 0.75,
+                        borderRadius: '6px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                      }
+                    },
+                    arrow: {
+                      sx: {
+                        color: 'rgba(26, 26, 26, 0.95)',
+                      }
+                    }
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    startIcon={<Add />}
+                    onClick={() => navigate('/admin/groups')}
+                    fullWidth
+                    sx={{
+                      borderColor: 'rgba(26, 26, 26, 0.2)',
+                      color: designSystem.colors.textDark,
+                      bgcolor: 'rgba(26, 26, 26, 0.03)', // Subtle neutral background
+                      borderRadius: designSystem.borderRadius.sm,
+                      py: 1.5,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      '&:hover': {
+                        borderColor: designSystem.colors.accentBlue,
+                        bgcolor: 'rgba(26, 26, 26, 0.08)', // Darker neutral on hover
+                        transform: 'translateY(-1px)',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                     },
                   }}
                 >
                   Create New Group
                 </Button>
+              </Tooltip>
               </Box>
             </CardContent>
           </Card>
+        </Box>
 
-          {/* Recent Quizzes - Dark Card */}
+        {/* Second Row: Quick Actions and Recent Items */}
+        <Box 
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: 'repeat(1, 1fr)',
+              sm: 'repeat(6, 1fr)',
+              md: 'repeat(12, 1fr)',
+            },
+            gap: { xs: 2, sm: 3 },
+          }}
+        >
+          {/* Recent Quizzes - Dark card with gradient for visual depth */}
           <Card 
             sx={{
               gridColumn: { xs: 'span 12', md: 'span 9' },
               borderRadius: designSystem.borderRadius.bento,
-              border: 'none',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
               boxShadow: designSystem.shadows.bento,
-              bgcolor: 'rgba(255, 255, 255, 0.03)',
+              background: 'linear-gradient(135deg, #121212 0%, #181818 100%)', // Subtle gradient for depth
               backdropFilter: 'blur(10px)',
             }}
           >
             <CardContent sx={{ p: designSystem.spacing.md }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography 
-                  variant="h6" 
-                  sx={{ 
-                    fontWeight: 700, 
-                    color: designSystem.colors.textLight,
-                    fontFamily: designSystem.typography.fontFamily.display 
-                  }}
-                >
-                  Recent Quizzes
-                </Typography>
-                <Button
-                  variant="text"
-                  onClick={() => navigate('/admin/quizzes')}
-                  sx={{
-                    color: designSystem.colors.accentBlue,
-                    fontWeight: 600,
-                    textTransform: 'none',
-                    borderRadius: designSystem.borderRadius.sm,
-                    '&:hover': {
-                      bgcolor: `${designSystem.colors.accentBlue}15`,
-                    },
-                  }}
-                >
-                  View All →
-                </Button>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Box>
+                  <Typography 
+                    variant="h6" 
+                    sx={{ 
+                      fontWeight: 700, 
+                      color: designSystem.colors.textLight,
+                      fontFamily: designSystem.typography.fontFamily.display 
+                    }}
+                  >
+                    Recent Quizzes
+                  </Typography>
+                  <Typography 
+                    variant="caption" 
+                    sx={{ 
+                      color: 'rgba(255, 255, 255, 0.5)',
+                      fontSize: '11px',
+                      fontStyle: 'italic',
+                      display: 'block',
+                      mt: 0.5,
+                    }}
+                  >
+                    Last updated {getRelativeTime(lastUpdated)}
+                  </Typography>
+                </Box>
+                <Box display="flex" gap={2} alignItems="center">
+                  <FormControl 
+                    size="small" 
+                    sx={{ 
+                      minWidth: 160,
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: designSystem.borderRadius.sm,
+                        '& fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.2)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(255, 255, 255, 0.3)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: designSystem.colors.accentBlue,
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'rgba(255, 255, 255, 0.6)',
+                        fontSize: '13px',
+                      },
+                      '& .MuiSelect-select': {
+                        color: designSystem.colors.textLight,
+                        fontSize: '13px',
+                        fontWeight: 500,
+                      },
+                      '& .MuiSvgIcon-root': {
+                        color: 'rgba(255, 255, 255, 0.6)',
+                      },
+                    }}
+                  >
+                    <InputLabel id="quiz-filter-label">Sort by</InputLabel>
+                    <Select
+                      labelId="quiz-filter-label"
+                      value={quizFilter}
+                      label="Sort by"
+                      onChange={(e) => setQuizFilter(e.target.value as 'all' | 'published' | 'draft' | 'recent')}
+                    >
+                      <MenuItem value="recent">Recent</MenuItem>
+                      <MenuItem value="all">All Quizzes</MenuItem>
+                      <MenuItem value="published">Published Only</MenuItem>
+                      <MenuItem value="draft">Drafts Only</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <Button
+                    variant="text"
+                    onClick={() => navigate('/admin/quizzes')}
+                    sx={{
+                      color: designSystem.colors.accentBlue,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      borderRadius: designSystem.borderRadius.sm,
+                      fontSize: '13px',
+                      '&:hover': {
+                        bgcolor: `${designSystem.colors.accentBlue}15`,
+                      },
+                    }}
+                  >
+                    View All →
+                  </Button>
+                </Box>
               </Box>
-              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
-                {quizzes.slice(0, 5).map(quiz => (
+              <List 
+                sx={{ 
+                  maxHeight: 500, // Taller for better UX
+                  overflow: 'auto',
+                  // Custom scrollbar styling for premium feel
+                  '&::-webkit-scrollbar': {
+                    width: '8px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    bgcolor: 'rgba(255, 255, 255, 0.05)',
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
+                    borderRadius: '4px',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.3)',
+                    },
+                  },
+                }}
+              >
+                {quizzes
+                  .filter(quiz => {
+                    if (quizFilter === 'published') return quiz.is_published
+                    if (quizFilter === 'draft') return !quiz.is_published
+                    return true
+                  })
+                  .slice(0, 5)
+                  .map(quiz => (
                   <ListItem 
                     key={quiz._id} 
                     divider
                     sx={{
                       borderRadius: designSystem.borderRadius.sm,
                       mb: 1,
+                      py: 2, // Improved vertical rhythm
                       borderColor: 'rgba(255, 255, 255, 0.1)',
                       '&:hover': {
-                        bgcolor: 'rgba(255, 255, 255, 0.05)',
+                        bgcolor: 'rgba(255, 255, 255, 0.08)',
                       },
                     }}
                   >
                     <ListItemText
                       primary={
-                        <Typography variant="body1" fontWeight={600} color={designSystem.colors.textLight}>
+                        <Typography 
+                          variant="body1" 
+                          fontWeight={600} 
+                          color={designSystem.colors.textLight}
+                          sx={{ mb: 0.5 }} // Better spacing before description
+                        >
                           {quiz.title}
                         </Typography>
                       }
                       secondary={
                         <Box>
-                          <Typography variant="body2" color="rgba(255, 255, 255, 0.6)" sx={{ mb: 1 }}>
+                          <Typography 
+                            variant="body2" 
+                            color="rgba(255, 255, 255, 0.6)" 
+                            sx={{ mb: 1.5, lineHeight: 1.6 }} // Less cramped - improved from 1.5
+                          >
                             {quiz.description}
                           </Typography>
-                          <Box display="flex" gap={1}>
+                          <Box display="flex" gap={1} alignItems="center">
                             <Chip
                               label={quiz.is_published ? 'Published' : 'Draft'}
                               sx={{
@@ -612,7 +823,7 @@ const AdminDashboard: React.FC = () => {
                                 color: designSystem.colors.textDark,
                                 fontWeight: 600,
                                 fontSize: '11px',
-                                height: '24px',
+                                height: '22px',
                                 border: 'none',
                               }}
                               size="small"
@@ -625,7 +836,7 @@ const AdminDashboard: React.FC = () => {
                                 color: 'rgba(255, 255, 255, 0.6)',
                                 border: '1px solid rgba(255, 255, 255, 0.1)',
                                 fontSize: '11px',
-                                height: '24px',
+                                height: '22px',
                                 fontFamily: designSystem.typography.fontFamily.mono,
                               }}
                             />
@@ -634,45 +845,51 @@ const AdminDashboard: React.FC = () => {
                       }
                     />
                     <ListItemSecondaryAction>
-                      <Box display="flex" gap={1}>
+                      <Box display="flex" gap={0.5} alignItems="center"> {/* Tighter icon spacing */}
                         <IconButton
                           size="small"
                           onClick={() => toggleQuizPublish(quiz._id, quiz.is_published)}
                           sx={{
                             color: 'rgba(255, 255, 255, 0.5)',
+                            width: 36,
+                            height: 36, // Consistent icon button size
                             '&:hover': {
                               bgcolor: `${designSystem.colors.accentGreen}25`,
                               color: designSystem.colors.accentGreen,
                             },
                           }}
                         >
-                          {quiz.is_published ? <VisibilityOff /> : <Visibility />}
+                          {quiz.is_published ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => navigate(`/admin/quizzes/${quiz._id}`)}
                           sx={{
                             color: 'rgba(255, 255, 255, 0.5)',
+                            width: 36,
+                            height: 36,
                             '&:hover': {
                               bgcolor: `${designSystem.colors.accentBlue}25`,
                               color: designSystem.colors.accentBlue,
                             },
                           }}
                         >
-                          <Edit />
+                          <Edit fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => deleteQuiz(quiz._id)}
                           sx={{
                             color: 'rgba(255, 255, 255, 0.5)',
+                            width: 36,
+                            height: 36,
                             '&:hover': {
                               bgcolor: `${designSystem.colors.brandPrimary}25`,
                               color: designSystem.colors.brandPrimary,
                             },
                           }}
                         >
-                          <Delete />
+                          <Delete fontSize="small" />
                         </IconButton>
                       </Box>
                     </ListItemSecondaryAction>
@@ -734,7 +951,27 @@ const AdminDashboard: React.FC = () => {
                   View All →
                 </Button>
               </Box>
-              <List sx={{ maxHeight: 400, overflow: 'auto' }}>
+              <List 
+                sx={{ 
+                  maxHeight: 500, // Taller for better UX
+                  overflow: 'auto',
+                  // Custom scrollbar styling for premium feel
+                  '&::-webkit-scrollbar': {
+                    width: '8px',
+                  },
+                  '&::-webkit-scrollbar-track': {
+                    bgcolor: 'rgba(26, 26, 26, 0.05)',
+                    borderRadius: '4px',
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    bgcolor: 'rgba(26, 26, 26, 0.2)',
+                    borderRadius: '4px',
+                    '&:hover': {
+                      bgcolor: 'rgba(26, 26, 26, 0.3)',
+                    },
+                  },
+                }}
+              >
                 {groups.slice(0, 5).map(group => (
                   <ListItem 
                     key={group._id} 
@@ -742,51 +979,65 @@ const AdminDashboard: React.FC = () => {
                     sx={{
                       borderRadius: designSystem.borderRadius.sm,
                       mb: 1,
+                      py: 2, // Improved vertical rhythm
                       borderColor: 'rgba(26, 26, 26, 0.1)',
                       '&:hover': {
-                        bgcolor: 'rgba(26, 26, 26, 0.03)',
+                        bgcolor: 'rgba(26, 26, 26, 0.05)',
                       },
                     }}
                   >
                     <ListItemText
                       primary={
-                        <Typography variant="body1" fontWeight={600} color={designSystem.colors.textDark}>
+                        <Typography 
+                          variant="body1" 
+                          fontWeight={600} 
+                          color={designSystem.colors.textDark}
+                          sx={{ mb: 0.5 }} // Better spacing
+                        >
                           {group.name}
                         </Typography>
                       }
                       secondary={
-                        <Typography variant="body2" color="rgba(26, 26, 26, 0.6)">
+                        <Typography 
+                          variant="body2" 
+                          color="rgba(26, 26, 26, 0.6)"
+                          sx={{ lineHeight: 1.6 }} // Less cramped - improved from 1.5
+                        >
                           {group.description}
                         </Typography>
                       }
                     />
                     <ListItemSecondaryAction>
-                      <Box display="flex" gap={1}>
+                      <Box display="flex" gap={0.5} alignItems="center"> {/* Tighter icon spacing */}
                         <IconButton
                           size="small"
                           onClick={() => navigate(`/admin/groups/${group._id}`)}
                           sx={{
                             color: 'rgba(26, 26, 26, 0.5)',
+                            width: 36,
+                            height: 36, // Consistent icon button size
                             '&:hover': {
                               bgcolor: `${designSystem.colors.accentBlue}25`,
                               color: designSystem.colors.accentBlue,
                             },
                           }}
                         >
-                          <Edit />
+                          <Edit fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => deleteGroup(group._id)}
                           sx={{
                             color: 'rgba(26, 26, 26, 0.5)',
+                            width: 36,
+                            height: 36,
                             '&:hover': {
                               bgcolor: `${designSystem.colors.brandPrimary}25`,
                               color: designSystem.colors.brandPrimary,
                             },
                           }}
                         >
-                          <Delete />
+                          <Delete fontSize="small" />
                         </IconButton>
                       </Box>
                     </ListItemSecondaryAction>

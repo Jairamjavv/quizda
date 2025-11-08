@@ -30,9 +30,13 @@ const router = express.Router();
  * Register a new user with session creation
  */
 router.post("/register", rateLimitLogin, async (req, res) => {
-  const { email, password, role, rememberMe } = req.body;
+  const { email, password, role, mode, rememberMe } = req.body;
 
-  logger.info("Registration attempt", { email, role: role || "user" });
+  logger.info("Registration attempt", {
+    email,
+    role: role || "user",
+    mode: mode || "attempt",
+  });
 
   try {
     const existing = await User.findByEmail(email);
@@ -42,12 +46,18 @@ router.post("/register", rateLimitLogin, async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create(email, hash, role || "user");
+    const user = await User.create(
+      email,
+      hash,
+      role || "user",
+      mode || "attempt"
+    );
 
     logger.info("User created successfully", {
       userId: user.id,
       email,
       role: user.role,
+      mode: user.mode,
     });
 
     // Generate tokens
@@ -55,6 +65,7 @@ router.post("/register", rateLimitLogin, async (req, res) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      mode: user.mode,
     });
 
     // Create refresh token record
@@ -99,6 +110,7 @@ router.post("/register", rateLimitLogin, async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        mode: user.mode,
       },
       csrfToken,
     });
@@ -137,6 +149,7 @@ router.post("/login", rateLimitLogin, async (req, res) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      mode: user.mode,
     });
 
     // Create refresh token record
@@ -174,6 +187,7 @@ router.post("/login", rateLimitLogin, async (req, res) => {
       userId: user.id,
       email,
       role: user.role,
+      mode: user.mode,
       sessionId: session.id,
     });
 
@@ -183,6 +197,7 @@ router.post("/login", rateLimitLogin, async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        mode: user.mode,
       },
       csrfToken,
     });
@@ -233,35 +248,15 @@ router.post("/refresh", async (req, res) => {
     const activeSessions = await SessionModel.getActiveSessions(user.id);
     const activeSession = activeSessions.find((s: any) => s.is_active);
 
-    // IDLE TIMEOUT VALIDATION: Check if session has been idle for >30 minutes
+    // NOTE: We do NOT check idle timeout here during token refresh
+    // Idle timeout is enforced by the client-side activity tracker
+    // This endpoint is specifically for restoring sessions after page refresh
+    // where last_activity might be outdated but the session is still valid
+
+    // Update session activity timestamp if session exists
     if (activeSession) {
-      const now = new Date();
-      const lastActivity = new Date(activeSession.last_activity);
-      const idleTimeMs = now.getTime() - lastActivity.getTime();
-      const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-
-      if (idleTimeMs > IDLE_TIMEOUT_MS) {
-        logger.warn("Session idle timeout exceeded", {
-          userId: user.id,
-          sessionId: activeSession.id,
-          idleTimeMinutes: Math.floor(idleTimeMs / 60000),
-        });
-
-        // Invalidate the idle session
-        await SessionModel.invalidate(activeSession.session_token);
-        await RefreshTokenModel.revoke(refreshToken);
-
-        return res.status(401).json({
-          error: "Session expired due to inactivity",
-          code: "IDLE_TIMEOUT",
-          message:
-            "Your session has expired after 30 minutes of inactivity. Please log in again.",
-        });
-      }
-
-      // Update session activity timestamp
       await SessionModel.updateActivity(activeSession.session_token);
-      logger.debug("Session activity updated", {
+      logger.debug("Session activity updated during token refresh", {
         userId: user.id,
         sessionId: activeSession.id,
       });

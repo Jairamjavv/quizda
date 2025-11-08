@@ -9,12 +9,13 @@ interface User {
   id: number
   email: string
   role: 'user' | 'admin'
+  mode?: 'contributor' | 'attempt'
 }
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string, rememberMe?: boolean) => Promise<User>
-  register: (email: string, password: string, rememberMe?: boolean) => Promise<void>
+  login: (email: string, password: string, mode: 'contributor' | 'attempt', rememberMe?: boolean) => Promise<User>
+  register: (email: string, password: string, mode: 'contributor' | 'attempt', rememberMe?: boolean) => Promise<void>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
   loading: boolean
@@ -66,13 +67,32 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
       
       // If no access token in memory, try to refresh using the refresh token cookie
       if (!currentUser) {
-        logger.info('No access token in memory, attempting token refresh...');
+        logger.debug('No access token in memory, attempting token refresh...');
         try {
           await sessionManager.refreshToken();
           currentUser = sessionManager.getCurrentUser();
           logger.info('Token refreshed successfully on app startup');
-        } catch (refreshError) {
-          logger.info('No valid refresh token found, user needs to login');
+        } catch (refreshError: any) {
+          // Check error type
+          const status = refreshError?.response?.status;
+          const isNetworkError = refreshError?.message === "Network Error" || 
+                                 refreshError?.code === "ERR_NETWORK" || 
+                                 refreshError?.code === "ERR_CONNECTION_REFUSED";
+          
+          if (status === 403 || status === 401) {
+            // No/invalid refresh token - normal for logged-out users
+            logger.debug('No valid refresh token found (user not logged in)');
+          } else if (isNetworkError) {
+            // Can't reach server - common in dev when backend isn't running
+            logger.debug('Cannot connect to server during token refresh');
+          } else {
+            // Actual unexpected errors
+            logger.warn('Token refresh failed with unexpected error', {
+              status: status,
+              message: refreshError?.message
+            });
+          }
+          
           setLoading(false);
           return;
         }
@@ -89,21 +109,37 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
               setUser({
                 id: refreshedUser.id,
                 email: refreshedUser.email,
-                role: refreshedUser.role as 'user' | 'admin'
+                role: refreshedUser.role as 'user' | 'admin',
+                mode: refreshedUser.mode as 'contributor' | 'attempt' | undefined
               });
               // Start activity tracking after successful session restoration
               activityTracker.start();
               logger.info('Session restored, activity tracker started');
             }
-          } catch (refreshError) {
-            logger.warn('Token refresh failed, keeping existing session');
-            // Don't clear session if refresh fails - user might still be valid
+          } catch (refreshError: any) {
+            const status = refreshError?.response?.status;
+            const isNetworkError = refreshError?.message === "Network Error" || 
+                                   refreshError?.code === "ERR_NETWORK" || 
+                                   refreshError?.code === "ERR_CONNECTION_REFUSED";
+            
+            if (status === 403 || status === 401) {
+              logger.info('Refresh token expired or invalid, clearing session');
+              sessionManager.clearSession();
+              setUser(null);
+            } else if (isNetworkError) {
+              logger.debug('Cannot connect to server, keeping existing session');
+              // Keep the existing session when we can't reach the server
+            } else {
+              logger.warn('Token refresh failed, keeping existing session');
+              // Don't clear session if refresh fails due to other issues - user might still be valid
+            }
           }
         } else {
           setUser({
             id: currentUser.id,
             email: currentUser.email,
-            role: currentUser.role as 'user' | 'admin'
+            role: currentUser.role as 'user' | 'admin',
+            mode: currentUser.mode as 'contributor' | 'attempt' | undefined
           });
           // Start activity tracking for existing valid session
           activityTracker.start();
@@ -124,13 +160,14 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }
 
-  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<User> => {
+  const login = async (email: string, password: string, mode: 'contributor' | 'attempt' = 'attempt', rememberMe: boolean = false): Promise<User> => {
     logger.authAttempt('login', email);
     
     try {
       const response = await axios.post('/auth/login', { 
         email, 
         password,
+        mode,
         rememberMe 
       });
       
@@ -149,11 +186,12 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
       const userObj: User = {
         id: userData.id,
         email: userData.email,
-        role: userData.role
+        role: userData.role,
+        mode: userData.mode
       };
       setUser(userObj);
       
-      logger.info('User logged in successfully', { email, role: userData.role });
+      logger.info('User logged in successfully', { email, role: userData.role, mode: userData.mode });
       
       return userObj;
     } catch (error: any) {
@@ -167,13 +205,14 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   }
 
-  const register = async (email: string, password: string, rememberMe: boolean = false) => {
+  const register = async (email: string, password: string, mode: 'contributor' | 'attempt' = 'attempt', rememberMe: boolean = false) => {
     logger.authAttempt('register', email);
     
     try {
       const response = await axios.post('/auth/register', { 
         email, 
         password,
+        mode,
         rememberMe 
       });
       
@@ -188,10 +227,11 @@ export const AuthProviderV2: React.FC<{ children: ReactNode }> = ({ children }) 
       setUser({
         id: userData.id,
         email: userData.email,
-        role: userData.role
+        role: userData.role,
+        mode: userData.mode
       });
       
-      logger.info('User registered successfully', { email, role: userData.role });
+      logger.info('User registered successfully', { email, role: userData.role, mode: userData.mode });
     } catch (error: any) {
       logger.authFailure('register', error);
       logger.error('Registration failed', error, {

@@ -8,17 +8,19 @@ import {
   Typography,
   Box,
   Alert,
-  CircularProgress,
   FormControlLabel,
   Checkbox
 } from '@mui/material'
 import { useAuthV2 as useAuth } from '../contexts/AuthContextV2'
 import { designSystem } from '../theme/designSystem'
+import ModeToggle from '../components/ModeToggle'
+import SandglassLoader from '../components/SandglassLoader'
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(true)
+  const [mode, setMode] = useState<'contributor' | 'attempt'>('attempt')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
@@ -30,7 +32,7 @@ const Login: React.FC = () => {
     setLoading(true)
 
     try {
-      await login(email, password, rememberMe)
+      await login(email, password, mode, rememberMe)
       navigate('/dashboard')
     } catch (err: any) {
       setError(err.message)
@@ -99,6 +101,9 @@ const Login: React.FC = () => {
               Sign In
             </Typography>
           </Box>
+
+          {/* Mode Toggle */}
+          <ModeToggle mode={mode} onChange={setMode} />
           
           {error && (
             <Alert 
@@ -245,7 +250,7 @@ const Login: React.FC = () => {
                 },
               }}
             >
-              {loading ? <CircularProgress size={24} sx={{ color: designSystem.colors.textLight }} /> : 'Sign In'}
+              {loading ? <SandglassLoader size={24} color={designSystem.colors.textLight} /> : 'Sign In'}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Link to="/auth/register" style={{ textDecoration: 'none' }}>

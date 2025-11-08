@@ -9,6 +9,9 @@ import dotenv from "dotenv";
 import { logger } from "./logger.js";
 import { connectRedis } from "./redis.js";
 
+// Load environment variables
+// .env.local takes precedence over .env (for local development overrides)
+dotenv.config({ path: ".env.local" });
 dotenv.config();
 
 import authRoutes from "./routes/authV2.js";

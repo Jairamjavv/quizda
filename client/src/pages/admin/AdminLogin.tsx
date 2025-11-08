@@ -7,10 +7,10 @@ import {
   Button,
   Typography,
   Box,
-  Alert,
-  CircularProgress
+  Alert
 } from '@mui/material'
 import { useAuthV2 as useAuth } from '../../contexts/AuthContextV2'
+import SandglassLoader from '../../components/SandglassLoader'
 
 const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -26,7 +26,7 @@ const AdminLogin: React.FC = () => {
     setLoading(true)
 
     try {
-      const user = await login(email, password)
+      const user = await login(email, password, 'attempt', false)
       // Check if user is admin using server-validated data
       if (user && user.role === 'admin') {
         navigate('/admin')
@@ -138,7 +138,7 @@ const AdminLogin: React.FC = () => {
                 mb: 2,
               }}
             >
-              {loading ? <CircularProgress size={24} sx={{ color: '#FFFFFF' }} /> : 'Admin Sign In'}
+              {loading ? <SandglassLoader size={24} color="#FFFFFF" /> : 'Admin Sign In'}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Button
