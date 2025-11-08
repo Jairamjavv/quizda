@@ -7,6 +7,7 @@ import { designSystem } from '../theme/designSystem';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
 
   const handleContributeClick = () => {
     navigate('/auth/login');
@@ -247,7 +248,7 @@ const Landing: React.FC = () => {
           textAlign: 'center',
         }}
       >
-        <Typography
+          <Typography
           variant="body2"
           sx={{
             fontFamily: designSystem.typography.fontFamily.mono,
@@ -256,7 +257,7 @@ const Landing: React.FC = () => {
             textShadow: '1px 1px 2px rgba(0, 0, 0, 0.3)',
           }}
         >
-          © 2024 Quizda. All rights reserved.
+          © {currentYear} Quizda. All rights reserved. — With love from India ❤️
         </Typography>
       </Box>
     </Box>

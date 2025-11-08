@@ -24,6 +24,12 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+function maskEmail(email?: string) {
+  if (!email) return undefined;
+  // keep first character and domain, mask the rest
+  return email.replace(/(^.).+(@.+)/, "$1***$2");
+}
+
 const router = express.Router();
 
 /**
@@ -32,10 +38,10 @@ const router = express.Router();
 router.post("/register", rateLimitLogin, async (req, res) => {
   const { email, password, role, mode, rememberMe } = req.body;
 
+  const masked = maskEmail(email);
   logger.info("Registration attempt", {
-    email,
+    email: masked,
     role: role || "user",
-    mode: mode || "attempt",
   });
 
   try {
@@ -55,9 +61,8 @@ router.post("/register", rateLimitLogin, async (req, res) => {
 
     logger.info("User created successfully", {
       userId: user.id,
-      email,
+      email: maskEmail(user.email),
       role: user.role,
-      mode: user.mode,
     });
 
     // Generate tokens
@@ -115,7 +120,7 @@ router.post("/register", rateLimitLogin, async (req, res) => {
       csrfToken,
     });
   } catch (error) {
-    logger.error("Registration error", error, { email });
+    logger.error("Registration error", error, { email: masked });
     res.status(500).json({ error: "Registration failed" });
   }
 });
@@ -126,18 +131,22 @@ router.post("/register", rateLimitLogin, async (req, res) => {
 router.post("/login", rateLimitLogin, async (req, res) => {
   const { email, password, rememberMe } = req.body;
 
-  logger.info("Login attempt", { email });
+  const maskedLoginEmail = maskEmail(email);
+  logger.info("Login attempt", { email: maskedLoginEmail });
 
   try {
     const user = await User.findByEmail(email);
     if (!user) {
-      logger.warn("Login failed: user not found", { email });
+      logger.warn("Login failed: user not found", { email: maskedLoginEmail });
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-      logger.warn("Login failed: invalid password", { email, userId: user.id });
+      logger.warn("Login failed: invalid password", {
+        email: maskedLoginEmail,
+        userId: user.id,
+      });
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
@@ -185,9 +194,8 @@ router.post("/login", rateLimitLogin, async (req, res) => {
 
     logger.info("User logged in successfully", {
       userId: user.id,
-      email,
+      email: maskEmail(user.email),
       role: user.role,
-      mode: user.mode,
       sessionId: session.id,
     });
 
@@ -202,7 +210,7 @@ router.post("/login", rateLimitLogin, async (req, res) => {
       csrfToken,
     });
   } catch (error) {
-    logger.error("Login error", error, { email });
+    logger.error("Login error", error, { email: maskedLoginEmail });
     res.status(500).json({ error: "Login failed" });
   }
 });
@@ -247,19 +255,50 @@ router.post("/refresh", async (req, res) => {
     // Find active session for this user (if any)
     const activeSessions = await SessionModel.getActiveSessions(user.id);
     const activeSession = activeSessions.find((s: any) => s.is_active);
+    // Server-side idle timeout enforcement during refresh
+    // This prevents session fixation by ensuring refresh is not allowed
+    // for sessions that have been idle for longer than the configured limit.
+    const idleTimeoutMinutes =
+      Number(process.env.SESSION_IDLE_TIMEOUT_MINUTES) || 30;
 
-    // NOTE: We do NOT check idle timeout here during token refresh
-    // Idle timeout is enforced by the client-side activity tracker
-    // This endpoint is specifically for restoring sessions after page refresh
-    // where last_activity might be outdated but the session is still valid
-
-    // Update session activity timestamp if session exists
     if (activeSession) {
-      await SessionModel.updateActivity(activeSession.session_token);
-      logger.debug("Session activity updated during token refresh", {
-        userId: user.id,
-        sessionId: activeSession.id,
-      });
+      try {
+        const lastActivity = new Date(
+          activeSession.last_activity || activeSession.lastActivity || 0
+        );
+        const idleLimitMs = idleTimeoutMinutes * 60 * 1000;
+
+        if (Date.now() - lastActivity.getTime() > idleLimitMs) {
+          // Session has been idle for too long — invalidate and reject refresh
+          await SessionModel.invalidate(activeSession.session_token);
+          await RefreshTokenModel.revoke(refreshToken);
+          logger.warn("Refresh failed: session idle timeout", {
+            userId: user.id,
+            sessionId: activeSession.id,
+            idleTimeoutMinutes,
+          });
+          return res
+            .status(401)
+            .json({ error: "Session expired due to inactivity" });
+        }
+
+        // Otherwise, update activity timestamp
+        await SessionModel.updateActivity(activeSession.session_token);
+        logger.debug("Session activity updated during token refresh", {
+          userId: user.id,
+          sessionId: activeSession.id,
+        });
+      } catch (err) {
+        // If we cannot verify last activity safely, be conservative and reject
+        logger.error(
+          "Failed to validate session idle time during refresh",
+          err,
+          { userId: user.id }
+        );
+        return res
+          .status(500)
+          .json({ error: "Unable to validate session state" });
+      }
     }
 
     // Generate new CSRF token for the session

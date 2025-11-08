@@ -29,34 +29,44 @@ async function addModeColumn() {
       `);
 
       console.log("✅ Successfully added 'mode' column to users table");
-      console.log("   - Default value: 'attempt'");
-      console.log("   - Existing users will have mode='attempt'");
+      if (process.env.MIGRATION_VERBOSE === "true") {
+        console.log("   - Default value: 'attempt'");
+        console.log("   - Existing users will have mode='attempt'");
+      }
     } else {
       console.log("ℹ️  'mode' column already exists in users table");
     }
 
-    // Show current schema
-    const schema = await client.query(`
-      SELECT column_name, data_type, column_default
-      FROM information_schema.columns 
-      WHERE table_name='users'
-      ORDER BY ordinal_position
-    `);
+    // Optionally print schema when MIGRATION_VERBOSE=true
+    if (process.env.MIGRATION_VERBOSE === "true") {
+      const schema = await client.query(`
+        SELECT column_name, data_type, column_default
+        FROM information_schema.columns 
+        WHERE table_name='users'
+        ORDER BY ordinal_position
+      `);
 
-    console.log("\n📋 Current users table schema:");
-    schema.rows.forEach((row) => {
+      console.log("\n📋 Current users table schema:");
+      schema.rows.forEach((row) => {
+        console.log(
+          `   - ${row.column_name} (${row.data_type})${
+            row.column_default ? ` DEFAULT ${row.column_default}` : ""
+          }`
+        );
+      });
+    } else {
       console.log(
-        `   - ${row.column_name} (${row.data_type})${
-          row.column_default ? ` DEFAULT ${row.column_default}` : ""
-        }`
+        "Schema output suppressed. Set MIGRATION_VERBOSE=true to enable detailed output."
       );
-    });
+    }
   } catch (error) {
     console.error("❌ Error adding mode column:", error);
     throw error;
   } finally {
     await client.end();
-    console.log("\nDatabase connection closed");
+    if (process.env.MIGRATION_VERBOSE === "true") {
+      console.log("\nDatabase connection closed");
+    }
   }
 }
 
