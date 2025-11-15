@@ -1,0 +1,54 @@
+/* Design tokens — CSS variables for Light/Dark modes */
+:root {
+  /* Light mode */
+  --primary-green: #2E7D50;
+  --primary-green-light: #E8F3ED;
+  --primary-green-dark: #1F5C3A;
+
+  --primary-orange: #D9822B;
+  --primary-orange-light: #FFF4E5;
+  --primary-orange-dark: #A56620;
+
+  --background: #FAFAFA;
+  --surface: #F3F4F3;
+  --surface-hover: #EBECEB;
+
+  --text-primary: #1C1C1C;
+  --text-secondary: #5D5D5D;
+  --text-disabled: #A6A6A6;
+
+  --accent-blue: #497AA7;
+  --accent-purple: #8566C2;
+  --accent-yellow: #E0C865;
+
+  --success: #2E7D50;
+  --warning: #E5962E;
+  --error: #C64545;
+  --info: #497AA7;
+}
+
+:root.dark {
+  /* Dark mode */
+  --background: #121416;
+  --surface: #1A1C1E;
+  --surface-hover: #232527;
+
+  --text-primary: #E6E6E6;
+  --text-secondary: #B3B3B3;
+  --text-disabled: #6E6E6E;
+
+  --primary-green: #4EBF7A;
+  --primary-green-subtle: #1E3B2A;
+
+  --primary-orange: #E6A34F;
+  --primary-orange-subtle: #3F2D1B;
+
+  --accent-blue: #6BA8D1;
+  --accent-purple: #A890DA;
+  --accent-yellow: #DDBB5A;
+
+  --success: #4EBF7A;
+  --warning: #E6A34F;
+  --error: #D96A6A;
+  --info: #6BA8D1;
+}
