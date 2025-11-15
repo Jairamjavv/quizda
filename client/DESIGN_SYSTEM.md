@@ -37,7 +37,7 @@ This document defines color tokens, usage guidance, and recommended patterns for
 
 Brand / Primary Colors
 
-- --primary-green: #2E7D50  // Muted emerald
+- --primary-green: #2E7D50 // Muted emerald
 - --primary-green-light: #E8F3ED
 - --primary-green-dark: #1F5C3A
 
@@ -72,17 +72,20 @@ Status
 ## Dark Mode Palette (Near-Black Surfaces)
 
 Base Surfaces:
+
 - --background-dark: #121416
 - --surface-dark: #1A1C1E
 - --surface-dark-hover: #232527
 - --divider-dark: #2C2E30
 
 Text in Dark Mode:
+
 - --text-primary-dark: #E6E6E6
 - --text-secondary-dark: #B3B3B3
 - --text-disabled-dark: #6E6E6E
 
 Brand Colors for Dark Backgrounds:
+
 - --primary-green-darkmode: #4EBF7A
 - --primary-green-darkmode-subtle: #1E3B2A
 
@@ -90,11 +93,13 @@ Brand Colors for Dark Backgrounds:
 - --primary-orange-darkmode-subtle: #3F2D1B
 
 Accent Colors (Dark Mode):
+
 - --accent-blue-dark: #6BA8D1
 - --accent-purple-dark: #A890DA
 - --accent-yellow-dark: #DDBB5A
 
 Status Colors (Dark Mode):
+
 - --success: #4EBF7A
 - --warning: #E6A34F
 - --error: #D96A6A
@@ -140,12 +145,12 @@ We recommend exposing color tokens via both a CSS variables file (‘designToken
 
 ## Example: Inline usage with CSS variable
 
-  background: var(--surface);
-  color: var(--text-primary);
+background: var(--surface);
+color: var(--text-primary);
 
-  &:hover {
-    background: var(--surface-hover);
-  }
+&:hover {
+background: var(--surface-hover);
+}
 
 ---
 
@@ -163,6 +168,7 @@ We recommend exposing color tokens via both a CSS variables file (‘designToken
 ---
 
 ## Contributors
+
 - Design System curated by the Quizda Team
 - Maintainers: `client/src/theme/designSystem.ts`
 
