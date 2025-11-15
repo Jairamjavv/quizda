@@ -1,37 +1,39 @@
 // QuizUp × Bento Minimal Design System
 // Color Palette & Theme Configuration
 
+import tokens from "./designTokens";
+
 export const designSystem = {
   colors: {
-    // Brand & Primary
-    brandPrimary: "#F54848", // Main CTA buttons, brand bar
-    brandHover: "#DD3333", // Hover state for primary
+    // Brand & Primary - mapped to token palette
+    brandPrimary: tokens.primary.green, // Main CTA buttons, brand bar
+    brandHover: tokens.primary.greenDark, // Hover state for primary
 
-    // Landing Page Colors
-    contributeGreen: "#42C97B", // Contribute mode background
-    contributeGreenHover: "#3BB96E", // Contribute mode hover
-    attemptBlue: "#3B9BFF", // Attempt mode background
-    attemptBlueHover: "#2E8BEF", // Attempt mode hover
+    // Landing Page Colors - mapped to tokens
+    contributeGreen: tokens.primary.green, // Contribute mode background
+    contributeGreenHover: tokens.primary.greenDark, // Contribute mode hover
+    attemptBlue: tokens.accents.blue, // Attempt mode background
+    attemptBlueHover: tokens.accents.blue, // Attempt mode hover (use same but could be dark variant)
 
     // Backgrounds
-    darkBg: "#1A1A1A", // Page backgrounds
-    lightSurface: "#F3F3F3", // Bento tiles, cards
+    darkBg: tokens.dark.background, // Page backgrounds
+    lightSurface: tokens.neutral.surface, // Bento tiles, cards
 
-    // Accents (Desaturated by 5-8% for premium dark background feel)
-    accentYellow: "#F5E099", // Desaturated lighter yellow for better SWOT Analysis readability
-    accentYellowDark: "#F5CE73", // Desaturated yellow for high emphasis
-    accentGreen: "#7DD68D", // Desaturated green - correct answers, success banners
-    accentBlue: "#6BC2F5", // Desaturated blue - neutral or secondary info
-    accentOrange: "#F5AC52", // Desaturated orange - progress potential, neutral state (0 streak)
+    // Accents
+    accentYellow: tokens.accents.yellow,
+    accentYellowDark: tokens.dark.accentYellow || tokens.accents.yellow,
+    accentGreen: tokens.primary.green,
+    accentBlue: tokens.accents.blue,
+    accentOrange: tokens.primary.orange,
 
     // Text
-    textLight: "#FFFFFF", // Text on dark
-    textDark: "#1A1A1A", // Text on light
-    textMuted: "#666666", // Secondary text
+    textLight: tokens.dark.textPrimary, // Text on dark
+    textDark: tokens.neutral.textPrimary, // Text on light
+    textMuted: tokens.neutral.textSecondary, // Secondary text
 
     // Legacy support (map to new system)
     white: "#FFFFFF",
-    gray: "#E0E0E0",
+    gray: tokens.neutral.surface,
   },
 
   // Typography Scale
@@ -146,25 +148,26 @@ export const designSystem = {
 export const muiThemeOverrides = {
   palette: {
     primary: {
-      main: designSystem.colors.brandPrimary,
-      contrastText: designSystem.colors.textLight,
+      main: tokens.primary.green,
+      contrastText: tokens.dark.textPrimary,
     },
     success: {
-      main: designSystem.colors.accentGreen,
+      main: tokens.status.success,
     },
     warning: {
-      main: designSystem.colors.accentYellow,
+      main: tokens.status.warning,
     },
     info: {
-      main: designSystem.colors.accentBlue,
+      main: tokens.accents.blue,
     },
     background: {
-      default: designSystem.colors.darkBg,
-      paper: designSystem.colors.lightSurface,
+      // prefer dark background by default; UI may toggle under ThemeProvider
+      default: tokens.dark.background,
+      paper: tokens.neutral.surface,
     },
     text: {
-      primary: designSystem.colors.textDark,
-      secondary: designSystem.colors.textMuted,
+      primary: tokens.neutral.textPrimary,
+      secondary: tokens.neutral.textSecondary,
     },
   },
   typography: {
